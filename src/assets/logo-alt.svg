@@ -1,0 +1,19 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="200" rx="24" fill="#121212"/>
+  
+  <!-- Abstract canvas elements -->
+  <path d="M50 100C50 72.3858 72.3858 50 100 50V150C72.3858 150 50 127.614 50 100Z" fill="#1E1E1E" stroke="#6A5ACD" stroke-width="4"/>
+  <path d="M100 50C127.614 50 150 72.3858 150 100C150 127.614 127.614 150 100 150V50Z" fill="#1E1E1E" stroke="#FF4081" stroke-width="4"/>
+  
+  <!-- Collaboration icons -->
+  <circle cx="75" cy="100" r="10" fill="#6A5ACD"/>
+  <circle cx="125" cy="100" r="10" fill="#FF4081"/>
+  
+  <!-- Brush stroke -->
+  <path d="M60 130C80 110 120 110 140 130" stroke="#03DAC5" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- CC initials -->
+  <path d="M60 70C60 65 65 60 70 60H80C85 60 90 65 90 70" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M110 70C110 65 115 60 120 60H130C135 60 140 65 140 70" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+</svg>

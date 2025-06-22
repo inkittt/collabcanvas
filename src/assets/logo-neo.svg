@@ -1,0 +1,23 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="200" height="200" rx="0" fill="#0F0F0F"/>
+  
+  <!-- Neo Brutalist elements -->
+  <rect x="35" y="35" width="130" height="130" fill="#1A1A1A" stroke="#FF3E41" stroke-width="6"/>
+  
+  <!-- Abstract C shapes -->
+  <path d="M60 70C60 60 70 50 85 50H100" stroke="#FF3E41" stroke-width="10" stroke-linecap="square"/>
+  <path d="M60 130C60 140 70 150 85 150H100" stroke="#FF3E41" stroke-width="10" stroke-linecap="square"/>
+  
+  <path d="M115 70C115 60 125 50 140 50H155" stroke="#40FFDC" stroke-width="10" stroke-linecap="square"/>
+  <path d="M115 130C115 140 125 150 140 150H155" stroke="#40FFDC" stroke-width="10" stroke-linecap="square"/>
+  
+  <!-- Center element -->
+  <rect x="85" y="85" width="30" height="30" fill="#FFFA68"/>
+  
+  <!-- Diagonal lines - brutalist elements -->
+  <line x1="35" y1="35" x2="60" y2="60" stroke="#FF3E41" stroke-width="4"/>
+  <line x1="165" y1="35" x2="140" y2="60" stroke="#40FFDC" stroke-width="4"/>
+  <line x1="35" y1="165" x2="60" y2="140" stroke="#40FFDC" stroke-width="4"/>
+  <line x1="165" y1="165" x2="140" y2="140" stroke="#FF3E41" stroke-width="4"/>
+</svg>

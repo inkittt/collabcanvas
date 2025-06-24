@@ -7,6 +7,8 @@ import CanvasEditor from './CanvasEditor';
 import CanvasCollaborators from './CanvasCollaborators';
 import ChatPanel from '../Chat/ChatPanel';
 import ImageEditingSidebar from './ImageEditingSidebar';
+import VoiceChat from './VoiceChat';
+import VoiceChatControl from './VoiceChatControl';
 import {
   Box,
   Button,
@@ -46,6 +48,7 @@ const CanvasPage = () => {
   const [error, setError] = useState(null);
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showVoiceChat, setShowVoiceChat] = useState(false);
   const [permission, setPermission] = useState('viewer');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
@@ -329,7 +332,7 @@ const CanvasPage = () => {
             )}
             
             <Tooltip title="Chat">
-              <IconButton 
+              <IconButton
                 onClick={() => setShowChat(!showChat)}
                 color={showChat ? 'primary' : 'default'}
                 sx={{ mr: 1 }}
@@ -337,9 +340,16 @@ const CanvasPage = () => {
                 <ChatIcon />
               </IconButton>
             </Tooltip>
-            
+
+            {/* Voice Chat Control */}
+            <VoiceChatControl
+              canvasId={canvasId}
+              permission={permission}
+              sx={{ mr: 1 }}
+            />
+
             <Tooltip title="Collaborators">
-              <IconButton 
+              <IconButton
                 onClick={() => setShowCollaborators(!showCollaborators)}
                 color={showCollaborators ? 'primary' : 'default'}
                 sx={{ mr: 1 }}
@@ -385,13 +395,20 @@ const CanvasPage = () => {
               open={showCollaborators}
               onClose={() => setShowCollaborators(false)}
               PaperProps={{
-                sx: { width: '85%', maxWidth: 350 }
+                sx: { width: '85%', maxWidth: 350, display: 'flex', flexDirection: 'column' }
               }}
             >
-              <Box sx={{ p: 2 }}>
-                <CanvasCollaborators 
-                  canvasId={canvasId} 
-                  canvasOwnerId={canvasData?.owner_id} 
+              <Box sx={{ p: 2, flexShrink: 0 }}>
+                <VoiceChat
+                  canvasId={canvasId}
+                  permission={permission}
+                  collaborators={[]} // Will be populated from CanvasCollaborators data
+                />
+              </Box>
+              <Box sx={{ p: 2, flex: 1, overflow: 'auto' }}>
+                <CanvasCollaborators
+                  canvasId={canvasId}
+                  canvasOwnerId={canvasData?.owner_id}
                 />
               </Box>
             </Drawer>
@@ -474,10 +491,21 @@ const CanvasPage = () => {
                 borderLeft: '1px solid',
                 borderColor: 'divider',
                 bgcolor: 'background.paper',
-                overflow: 'auto'
+                overflow: 'auto',
+                display: 'flex',
+                flexDirection: 'column'
               }}>
+                {/* Voice Chat - Always show when sidebar is open */}
+                <Box sx={{ p: 2, flexShrink: 0 }}>
+                  <VoiceChat
+                    canvasId={canvasId}
+                    permission={permission}
+                    collaborators={[]} // Will be populated from CanvasCollaborators data
+                  />
+                </Box>
+
                 {showCollaborators && (
-                  <Box sx={{ p: 2 }}>
+                  <Box sx={{ p: 2, flexShrink: 0 }}>
                     <CanvasCollaborators
                       canvasId={canvasId}
                       canvasOwnerId={canvasData?.owner_id}
@@ -486,7 +514,7 @@ const CanvasPage = () => {
                 )}
 
                 {showChat && (
-                  <Box sx={{ height: '100%', p: 2 }}>
+                  <Box sx={{ flex: 1, p: 2, minHeight: 0 }}>
                     <ChatPanel
                       canvasId={canvasId}
                       onClose={() => setShowChat(false)}

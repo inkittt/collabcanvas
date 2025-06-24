@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import { VoiceChatProvider } from './contexts/VoiceChatContext';
 import AuthForm from './components/Auth/AuthForm';
 import UpdatePassword from './components/Auth/UpdatePassword';
 import CanvasDashboard from './components/Canvas/CanvasDashboard';
@@ -505,22 +506,24 @@ const App = () => {
         <CssBaseline />
         <Router>
           <AuthProvider>
-            <AppContent />
-            
-            {/* Connection status alert */}
-            <Snackbar 
-              open={showConnectionAlert} 
-              autoHideDuration={6000} 
-              onClose={() => setShowConnectionAlert(false)}
-              anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-              <Alert 
-                severity="warning" 
+            <VoiceChatProvider>
+              <AppContent />
+
+              {/* Connection status alert */}
+              <Snackbar
+                open={showConnectionAlert}
+                autoHideDuration={6000}
                 onClose={() => setShowConnectionAlert(false)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
               >
-                Database connection issue. Please check your internet connection.
-              </Alert>
-            </Snackbar>
+                <Alert
+                  severity="warning"
+                  onClose={() => setShowConnectionAlert(false)}
+                >
+                  Database connection issue. Please check your internet connection.
+                </Alert>
+              </Snackbar>
+            </VoiceChatProvider>
           </AuthProvider>
         </Router>
       </ThemeProvider>

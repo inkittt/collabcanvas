@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Real-time Deletion</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .create-btn { background-color: #28a745; color: white; }
+        .delete-btn { background-color: #dc3545; color: white; }
+        .clear-btn { background-color: #6c757d; color: white; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Real-time Deletion Debug Tool</h1>
+    
+    <div>
+        <label>Canvas ID: </label>
+        <input type="text" id="canvasId" value="af1d8c69-148f-4855-88d0-d0b7f6eeaaa8" style="width: 300px;">
+        <button class="create-btn" onclick="setupSubscription()">🔗 Connect to Canvas</button>
+        <button class="clear-btn" onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div id="status" class="status disconnected">
+        🔴 Not connected
+    </div>
+    
+    <div>
+        <button class="create-btn" onclick="createElement()">➕ Create Test Element</button>
+        <button class="delete-btn" onclick="deleteAllElements()">🗑️ Delete All Elements</button>
+    </div>
+    
+    <div>
+        <h3>Real-time Event Log</h3>
+        <div id="log" class="log">Ready to debug real-time events...\n</div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+
+        const supabaseUrl = 'https://hdbwuqvftasbmqtuyzwm.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkYnd1cXZmdGFzYm1xdHV5endtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcwNTc3OTgsImV4cCI6MjA2MjYzMzc5OH0.0UEXzfw5YEuylbJqqG2NqIbeIjfgB49VUeEKS7tVLSk';
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        let currentChannel = null;
+        let currentCanvasId = null;
+        
+        // DOM elements
+        const statusEl = document.getElementById('status');
+        const logEl = document.getElementById('log');
+        const canvasIdInput = document.getElementById('canvasId');
+        
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.textContent += `[${timestamp}] ${message}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+        
+        function updateStatus(connected, message = '') {
+            if (connected) {
+                statusEl.className = 'status connected';
+                statusEl.textContent = `🟢 Connected to Canvas: ${currentCanvasId} ${message}`;
+            } else {
+                statusEl.className = 'status disconnected';
+                statusEl.textContent = `🔴 Disconnected ${message}`;
+            }
+        }
+        
+        // Global functions for buttons
+        window.setupSubscription = function() {
+            const canvasId = canvasIdInput.value.trim();
+            if (!canvasId) {
+                addLog('❌ Please enter a canvas ID');
+                return;
+            }
+
+            // Cleanup existing subscription
+            if (currentChannel) {
+                currentChannel.unsubscribe();
+                addLog('🔌 Unsubscribed from previous channel');
+            }
+
+            currentCanvasId = canvasId;
+            addLog(`🔗 Setting up subscription for canvas: ${canvasId}`);
+
+            // Use the exact same pattern as your app
+            const channelName = `elements:canvas=${canvasId}`;
+            addLog(`📡 Using channel pattern: ${channelName}`);
+
+            currentChannel = supabase
+                .channel(channelName)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'elements',
+                    filter: `canvas_id=eq.${canvasId}`
+                }, (payload) => {
+                    addLog(`� INSERT EVENT:`);
+                    addLog(`   Element ID: ${payload.new.id}`);
+                    addLog(`   Type: ${payload.new.element_type}`);
+                    addLog(`   Canvas ID: ${payload.new.canvas_id}`);
+                    addLog('---');
+                })
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'elements',
+                    filter: `canvas_id=eq.${canvasId}`
+                }, (payload) => {
+                    addLog(`🔥 UPDATE EVENT:`);
+                    addLog(`   Element ID: ${payload.new.id}`);
+                    addLog(`   Type: ${payload.new.element_type}`);
+                    addLog('---');
+                })
+                .on('postgres_changes', {
+                    event: 'DELETE',
+                    schema: 'public',
+                    table: 'elements',
+                    filter: `canvas_id=eq.${canvasId}`
+                }, (payload) => {
+                    addLog(`🔥 DELETE EVENT:`);
+                    addLog(`   Element ID: ${payload.old.id}`);
+                    addLog(`   Type: ${payload.old.element_type}`);
+                    addLog(`   Canvas ID: ${payload.old.canvas_id}`);
+                    addLog(`   Full old data: ${JSON.stringify(payload.old, null, 2)}`);
+                    addLog('---');
+                })
+                .subscribe((status) => {
+                    addLog(`📊 Subscription status: ${status}`);
+                    updateStatus(status === 'SUBSCRIBED', `(${channelName})`);
+                });
+        };
+        
+        window.createElement = async function() {
+            if (!currentCanvasId) {
+                addLog('❌ Please connect to a canvas first');
+                return;
+            }
+            
+            try {
+                const elementData = {
+                    canvas_id: currentCanvasId,
+                    element_type: 'debug-rectangle',
+                    data: {
+                        x: Math.random() * 400,
+                        y: Math.random() * 300,
+                        width: 100,
+                        height: 50,
+                        fill: '#' + Math.floor(Math.random()*16777215).toString(16)
+                    },
+                    user_id: 'debug-user-' + Math.random().toString(36).substr(2, 9)
+                };
+                
+                addLog('📤 Creating element...');
+                const { data, error } = await supabase
+                    .from('elements')
+                    .insert(elementData)
+                    .select();
+                
+                if (error) {
+                    addLog(`❌ Error creating element: ${error.message}`);
+                } else {
+                    addLog(`✅ Element created: ${data[0].id}`);
+                }
+            } catch (err) {
+                addLog(`❌ Exception: ${err.message}`);
+            }
+        };
+        
+        window.deleteAllElements = async function() {
+            if (!currentCanvasId) {
+                addLog('❌ Please connect to a canvas first');
+                return;
+            }
+            
+            try {
+                addLog('📤 Deleting all elements...');
+                const { error } = await supabase
+                    .from('elements')
+                    .delete()
+                    .eq('canvas_id', currentCanvasId);
+                
+                if (error) {
+                    addLog(`❌ Error deleting elements: ${error.message}`);
+                } else {
+                    addLog(`✅ Delete request sent for all elements in canvas`);
+                }
+            } catch (err) {
+                addLog(`❌ Exception: ${err.message}`);
+            }
+        };
+        
+        window.clearLog = function() {
+            logEl.textContent = 'Log cleared...\n';
+        };
+        
+        // Initialize
+        addLog('🚀 Debug tool ready');
+        addLog('📋 Enter a canvas ID and click "Connect to Canvas" to start debugging');
+    </script>
+</body>
+</html>

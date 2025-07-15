@@ -62,7 +62,7 @@ export const CanvasService = {
   async getUserCanvases() {
     try {
       console.log('Getting user canvases...');
-      
+
       // Get current user to check permissions
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) {
@@ -70,7 +70,7 @@ export const CanvasService = {
         return [];
       }
       console.log('Current user ID:', currentUser.id);
-      
+
       // First try to get from Supabase
       let canvases = [];
       try {
@@ -81,6 +81,7 @@ export const CanvasService = {
           .select(`
             id,
             name,
+            description,
             owner_id,
             is_public,
             created_at,
@@ -89,21 +90,61 @@ export const CanvasService = {
           `)
           .eq('owner_id', currentUser.id)
           .order('updated_at', { ascending: false });
-        
+
         if (!ownedError && ownedCanvases) {
-          canvases = ownedCanvases;
+          // Mark these as owned canvases
+          canvases = ownedCanvases.map(canvas => ({
+            ...canvas,
+            user_role: 'owner'
+          }));
           console.log('Retrieved owned canvases from Supabase:', canvases.length);
         } else {
           console.warn('Error getting owned canvases:', ownedError);
         }
-        
-        // Second approach: Get public canvases
+
+        // Second approach: Get canvases where user is a collaborator
+        console.log('Retrieving canvases where user is a collaborator...');
+        const { data: collaboratorCanvases, error: collaboratorError } = await supabase
+          .from('canvas_collaborators')
+          .select(`
+            canvases (
+              id,
+              name,
+              description,
+              owner_id,
+              is_public,
+              created_at,
+              updated_at,
+              profiles:owner_id (username, avatar_url)
+            )
+          `)
+          .eq('user_id', currentUser.id);
+
+        if (!collaboratorError && collaboratorCanvases) {
+          // Extract canvas data from the nested structure and add to list
+          const collaboratorCanvasData = collaboratorCanvases
+            .map(item => item.canvases)
+            .filter(canvas => canvas !== null) // Filter out any null canvases
+            .map(canvas => ({
+              ...canvas,
+              user_role: 'collaborator'
+            }));
+          canvases = [...canvases, ...collaboratorCanvasData];
+          console.log('Added collaborator canvases, total count:', canvases.length);
+        } else {
+          console.warn('Error getting collaborator canvases:', collaboratorError);
+        }
+
+        // Third approach: Get public canvases (excluding ones already in the list)
         console.log('Retrieving public canvases...');
-        const { data: publicCanvases, error: publicError } = await supabase
+        const existingCanvasIds = canvases.map(canvas => canvas.id);
+
+        let publicCanvasQuery = supabase
           .from('canvases')
           .select(`
             id,
             name,
+            description,
             owner_id,
             is_public,
             created_at,
@@ -111,12 +152,22 @@ export const CanvasService = {
             profiles:owner_id (username, avatar_url)
           `)
           .eq('is_public', true)
-          .neq('owner_id', currentUser.id) // Don't get duplicates of owned canvases
           .order('updated_at', { ascending: false });
-        
+
+        // Only add the exclusion filter if there are existing canvas IDs
+        if (existingCanvasIds.length > 0) {
+          publicCanvasQuery = publicCanvasQuery.not('id', 'in', `(${existingCanvasIds.join(',')})`);
+        }
+
+        const { data: publicCanvases, error: publicError } = await publicCanvasQuery;
+
         if (!publicError && publicCanvases) {
-          // Add public canvases to the list
-          canvases = [...canvases, ...publicCanvases];
+          // Mark these as public canvases (user is neither owner nor collaborator)
+          const publicCanvasData = publicCanvases.map(canvas => ({
+            ...canvas,
+            user_role: 'public'
+          }));
+          canvases = [...canvases, ...publicCanvasData];
           console.log('Added public canvases, total count:', canvases.length);
         } else {
           console.warn('Error getting public canvases:', publicError);
@@ -124,7 +175,20 @@ export const CanvasService = {
       } catch (error) {
         console.warn('Exception during Supabase canvas retrieval:', error);
       }
-      
+
+      // Remove duplicates based on canvas ID (in case a canvas appears in multiple categories)
+      const uniqueCanvases = [];
+      const seenIds = new Set();
+
+      for (const canvas of canvases) {
+        if (!seenIds.has(canvas.id)) {
+          seenIds.add(canvas.id);
+          uniqueCanvases.push(canvas);
+        }
+      }
+      canvases = uniqueCanvases;
+      console.log('After deduplication, canvas count:', canvases.length);
+
       // Then get local canvases
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -148,6 +212,8 @@ export const CanvasService = {
               username: currentUser.email || 'User',
               avatar_url: null
             };
+            // Determine user role for local canvas
+            localCanvas.user_role = localCanvas.owner_id === currentUser.id ? 'owner' : 'public';
             canvases.push(localCanvas);
           }
         }
@@ -294,6 +360,7 @@ export const CanvasService = {
       const canvasObject = {
         id: canvasId,
         name: canvasData.name,
+        description: canvasData.description || '',
         owner_id: user.id,
         is_public: canvasData.isPublic || false,
         invite_code: inviteCode,
@@ -320,6 +387,7 @@ export const CanvasService = {
           const dbCanvasData = {
             id: canvasId,
             name: canvasData.name,
+            description: canvasData.description || '',
             owner_id: user.id,
             is_public: canvasData.isPublic || false,
             created_at: now,
@@ -653,80 +721,19 @@ export const CanvasService = {
    */
   async deleteCanvas(canvasId) {
     console.log(`Attempting to delete canvas ${canvasId}`);
-    
+
     try {
-      // 1. First delete all related records to avoid foreign key constraint errors
-      
-      // Delete canvas elements
-      try {
-        const { error: elementsError } = await supabase
-          .from('canvas_elements')
-          .delete()
-          .eq('canvas_id', canvasId);
-          
-        if (elementsError) {
-          console.warn(`Warning: Could not delete canvas elements: ${elementsError.message}`);
-        } else {
-          console.log(`Successfully deleted canvas elements for canvas ${canvasId}`);
-        }
-      } catch (elemErr) {
-        console.warn('Error during elements deletion:', elemErr);
-      }
-      
-      // Delete canvas collaborators
-      try {
-        const { error: collabError } = await supabase
-          .from('canvas_collaborators')
-          .delete()
-          .eq('canvas_id', canvasId);
-          
-        if (collabError) {
-          console.warn(`Warning: Could not delete canvas collaborators: ${collabError.message}`);
-        } else {
-          console.log(`Successfully deleted canvas collaborators for canvas ${canvasId}`);
-        }
-      } catch (collabErr) {
-        console.warn('Error during collaborators deletion:', collabErr);
-      }
-      
-      // Delete any chat messages related to this canvas (if applicable)
-      try {
-        const { error: chatError } = await supabase
-          .from('canvas_messages')
-          .delete()
-          .eq('canvas_id', canvasId);
-          
-        if (chatError && !chatError.message.includes('does not exist')) {
-          console.warn(`Warning: Could not delete canvas messages: ${chatError.message}`);
-        }
-      } catch (chatErr) {
-        // Ignore errors for tables that might not exist
-        if (!chatErr.message?.includes('does not exist')) {
-          console.warn('Error during canvas messages deletion:', chatErr);
-        }
-      }
-      
-      // 2. Now delete the canvas itself
+      // Delete the canvas - related records (elements, collaborators, messages) will be automatically deleted via CASCADE
       const { error: canvasError } = await supabase
         .from('canvases')
         .delete()
         .eq('id', canvasId);
 
       if (canvasError) {
-        // If the regular deletion fails, try an alternative approach with RPC if available
-        try {
-          // Try an alternative method - force delete using a custom function if available
-          const { error: rpcError } = await supabase.rpc('force_delete_canvas', { canvas_id: canvasId });
-          
-          if (rpcError) {
-            throw new Error(`Could not delete canvas: ${canvasError.message}`);
-          }
-        } catch (rpcErr) {
-          // If RPC fails, it might not exist, so we'll fall back to a workaround
-          console.warn('RPC deletion failed, trying final fallback with local cleanup', rpcErr);
-          throw canvasError; // Re-throw the original error after trying alternatives
-        }
+        throw new Error(`Could not delete canvas: ${canvasError.message}`);
       }
+
+      console.log(`Canvas ${canvasId} and all related data successfully deleted via CASCADE`);
       
       // 3. Clean up local storage references to this canvas
       try {
@@ -1027,113 +1034,7 @@ export const CanvasService = {
     }
   },
 
-  /**
-   * Add a collaborator to a canvas
-   * @param {string} canvasId - The UUID of the canvas
-   * @param {string} userId - The UUID of the user to add
-   * @param {string} permissionLevel - Permission level (viewer, editor)
-   * @returns {Promise<Object>} - The created collaborator record
-   */
-  async addCollaborator(canvasId, userId, permissionLevel) {
-    try {
-      console.log('Adding collaborator to canvas:', canvasId, userId, permissionLevel);
-      
-      // First try to add via Supabase
-      try {
-        // First verify that the current user is the owner of the canvas
-        const { data: canvas, error: canvasError } = await supabase
-          .from('canvases')
-          .select('owner_id')
-          .eq('id', canvasId)
-          .single();
-        
-        if (!canvasError) {
-          // Get current user 
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (user && canvas.owner_id === user.id) {
-            // Now, add the collaborator
-            const { data, error } = await supabase
-              .from('canvas_collaborators')
-              .insert({
-                canvas_id: canvasId,
-                user_id: userId,
-                permission_level: permissionLevel,
-              })
-              .select()
-              .single();
-    
-            if (!error) {
-              console.log('Collaborator added via Supabase');
-              return data;
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('Error adding collaborator via Supabase:', error);
-      }
-      
-      // Fallback to localStorage
-      console.log('Using localStorage for adding collaborator');
-      
-      // Get the canvas to check ownership
-      const localCanvases = JSON.parse(localStorage.getItem('localCanvases') || '[]');
-      const localCanvas = localCanvases.find(canvas => canvas.id === canvasId);
-      
-      if (!localCanvas) {
-        throw new Error('Canvas not found');
-      }
-      
-      // Check if current user is the owner
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user || localCanvas.owner_id !== user.id) {
-        throw new Error('Only the canvas owner can add collaborators');
-      }
-      
-      // Get the user profile being added
-      let profile;
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .eq('id', userId)
-          .single();
-          
-        profile = data;
-      } catch (error) {
-        // Create a dummy profile
-        profile = {
-          id: userId,
-          username: 'User',
-          avatar_url: null
-        };
-      }
-      
-      // Create collaborator record
-      const collaboratorId = Math.random().toString(36).substring(2, 15);
-      const now = new Date().toISOString();
-      
-      const collaborator = {
-        id: collaboratorId,
-        canvas_id: canvasId,
-        user_id: userId,
-        permission_level: permissionLevel,
-        created_at: now,
-        profiles: profile
-      };
-      
-      // Add to local storage
-      const collaborators = JSON.parse(localStorage.getItem(`collaborators_${canvasId}`) || '[]');
-      collaborators.push(collaborator);
-      localStorage.setItem(`collaborators_${canvasId}`, JSON.stringify(collaborators));
-      
-      return collaborator;
-    } catch (error) {
-      console.error(`Error adding collaborator to canvas ${canvasId}:`, error);
-      throw error;
-    }
-  },
+
 
   /**
    * Update a collaborator's permission level

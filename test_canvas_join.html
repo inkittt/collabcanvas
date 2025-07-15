@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Canvas Join Functionality</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>Canvas Join Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Join Canvas with Invite Code</h2>
+        <p>Use invite code: <strong>5YQD7O</strong> (from our test)</p>
+        <input type="text" id="inviteCode" placeholder="Enter invite code" value="5YQD7O">
+        <button onclick="testJoinCanvas()">Join Canvas</button>
+        <div id="joinResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Get User Canvases</h2>
+        <p>This should now include canvases where you are a collaborator</p>
+        <button onclick="testGetUserCanvases()">Get My Canvases</button>
+        <div id="canvasesResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Instructions</h2>
+        <ol>
+            <li>Make sure you're logged into your CollabCanvas app</li>
+            <li>Open the browser console to see detailed logs</li>
+            <li>Test joining a canvas with the invite code</li>
+            <li>Check if the joined canvas appears in your canvas list</li>
+            <li>Try leaving and rejoining - the canvas should remain in your history</li>
+        </ol>
+    </div>
+
+    <script type="module">
+        // Import Supabase client (assuming it's available globally)
+        // You'll need to make sure your Supabase client is accessible here
+        
+        window.testJoinCanvas = async function() {
+            const inviteCode = document.getElementById('inviteCode').value;
+            const resultDiv = document.getElementById('joinResult');
+            
+            try {
+                resultDiv.textContent = 'Testing join canvas...';
+                resultDiv.className = 'result';
+                
+                // This would use your CanvasService.joinCanvasByInviteCode method
+                // For testing, we'll simulate the call
+                console.log('Testing join canvas with invite code:', inviteCode);
+                
+                // You would replace this with actual CanvasService call:
+                // const canvasId = await CanvasService.joinCanvasByInviteCode(inviteCode);
+                
+                resultDiv.textContent = `Test setup complete. Check your actual app to test with invite code: ${inviteCode}`;
+                resultDiv.className = 'result success';
+                
+            } catch (error) {
+                console.error('Error testing join canvas:', error);
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        };
+        
+        window.testGetUserCanvases = async function() {
+            const resultDiv = document.getElementById('canvasesResult');
+            
+            try {
+                resultDiv.textContent = 'Testing get user canvases...';
+                resultDiv.className = 'result';
+                
+                // This would use your CanvasService.getUserCanvases method
+                console.log('Testing get user canvases...');
+                
+                // You would replace this with actual CanvasService call:
+                // const canvases = await CanvasService.getUserCanvases();
+                
+                resultDiv.textContent = 'Test setup complete. Check your actual app dashboard to see if joined canvases appear in your canvas list.';
+                resultDiv.className = 'result success';
+                
+            } catch (error) {
+                console.error('Error testing get user canvases:', error);
+                resultDiv.textContent = `Error: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        };
+    </script>
+</body>
+</html>

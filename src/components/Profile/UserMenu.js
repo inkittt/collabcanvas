@@ -17,9 +17,11 @@ import {
   AccountCircle as AccountIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  ManageAccounts as ManageIcon
 } from '@mui/icons-material';
 import ProfileEditor from './ProfileEditor';
+import ProfileManagement from './ProfileManagement';
 
 const UserMenu = ({ onLogout }) => {
   const { user } = useAuth();
@@ -27,7 +29,8 @@ const UserMenu = ({ onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
-  
+  const [managementOpen, setManagementOpen] = useState(false);
+
   const open = Boolean(anchorEl);
 
   useEffect(() => {
@@ -59,6 +62,11 @@ const UserMenu = ({ onLogout }) => {
   const handleEditProfile = () => {
     handleClose();
     setEditorOpen(true);
+  };
+
+  const handleManageProfile = () => {
+    handleClose();
+    setManagementOpen(true);
   };
 
   const handleLogout = () => {
@@ -175,9 +183,14 @@ const UserMenu = ({ onLogout }) => {
           <EditIcon fontSize="small" sx={{ mr: 2 }} />
           Edit Profile
         </MenuItem>
-        
+
+        <MenuItem onClick={handleManageProfile} sx={{ py: 1.5 }}>
+          <ManageIcon fontSize="small" sx={{ mr: 2 }} />
+          Manage Account
+        </MenuItem>
+
         <Divider />
-        
+
         <MenuItem onClick={handleLogout} sx={{ py: 1.5, color: 'error.main' }}>
           <LogoutIcon fontSize="small" sx={{ mr: 2 }} />
           Logout
@@ -191,9 +204,21 @@ const UserMenu = ({ onLogout }) => {
         maxWidth="md"
         fullWidth
       >
-        <ProfileEditor 
-          onClose={() => setEditorOpen(false)} 
+        <ProfileEditor
+          onClose={() => setEditorOpen(false)}
           onUpdate={handleProfileUpdate}
+        />
+      </Dialog>
+
+      {/* Profile Management Dialog */}
+      <Dialog
+        open={managementOpen}
+        onClose={() => setManagementOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <ProfileManagement
+          onClose={() => setManagementOpen(false)}
         />
       </Dialog>
     </>

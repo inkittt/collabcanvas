@@ -4,6 +4,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { VoiceChatProvider } from './contexts/VoiceChatContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import AuthForm from './components/Auth/AuthForm';
 import UpdatePassword from './components/Auth/UpdatePassword';
 import CanvasDashboard from './components/Canvas/CanvasDashboard';
@@ -11,6 +12,9 @@ import CanvasPage from './components/Canvas/CanvasPage';
 import IntroductionPage from './components/Introduction/IntroductionPage';
 import RealtimeTest from './components/RealtimeTest';
 import ImageUploadTest from './components/ImageUploadTest';
+import ProfileCRUDDemo from './components/Profile/ProfileCRUDDemo';
+import AvatarTest from './components/Profile/AvatarTest';
+import QuickProfileTest from './components/Profile/QuickProfileTest';
 import { checkSupabaseConnection } from './lib/supabase';
 import SupabaseSync from './lib/supabaseSync';
 import { CircularProgress, Box, Typography, Snackbar, Alert } from '@mui/material';
@@ -458,6 +462,9 @@ const AppContent = () => {
       } />
       <Route path="/realtime-test" element={<RealtimeTest />} />
       <Route path="/upload-test" element={<ImageUploadTest />} />
+      <Route path="/profile-test" element={<ProfileCRUDDemo />} />
+      <Route path="/avatar-test" element={<AvatarTest />} />
+      <Route path="/quick-test" element={<QuickProfileTest />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
@@ -507,22 +514,24 @@ const App = () => {
         <Router>
           <AuthProvider>
             <VoiceChatProvider>
-              <AppContent />
+              <NotificationProvider>
+                <AppContent />
 
-              {/* Connection status alert */}
-              <Snackbar
-                open={showConnectionAlert}
-                autoHideDuration={6000}
-                onClose={() => setShowConnectionAlert(false)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-              >
-                <Alert
-                  severity="warning"
+                {/* Connection status alert */}
+                <Snackbar
+                  open={showConnectionAlert}
+                  autoHideDuration={6000}
                   onClose={() => setShowConnectionAlert(false)}
+                  anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
                 >
-                  Database connection issue. Please check your internet connection.
-                </Alert>
-              </Snackbar>
+                  <Alert
+                    severity="warning"
+                    onClose={() => setShowConnectionAlert(false)}
+                  >
+                    Database connection issue. Please check your internet connection.
+                  </Alert>
+                </Snackbar>
+              </NotificationProvider>
             </VoiceChatProvider>
           </AuthProvider>
         </Router>

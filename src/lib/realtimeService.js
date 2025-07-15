@@ -175,76 +175,10 @@ export const queueElementForSync = (canvasId, element) => {
   }
 };
 
-// ================================
-// CURSOR TRACKING UTILITIES
-// ================================
 
-const cursorSubscriptions = {};
-
-/**
- * Send current user's cursor position to other collaborators
- * @param {string} canvasId
- * @param {string} userId
- * @param {{x:number,y:number}} position
- * @param {Object} userProfile - User profile data (optional)
- */
-export const sendCursorPosition = (canvasId, userId, position, userProfile = null) => {
-  try {
-    const payload = {
-      userId,
-      ...position,
-      ...(userProfile && {
-        username: userProfile.username,
-        avatar_url: userProfile.avatar_url
-      })
-    };
-
-    supabase.channel(`cursor:canvas=${canvasId}`)
-      .send({ type: 'broadcast', event: 'cursor', payload });
-  } catch (err) {
-    console.error('Failed to broadcast cursor position', err);
-  }
-};
-
-/**
- * Subscribe to other users' cursor positions
- * @param {string} canvasId
- * @param {string} userId - current user (to ignore own messages)
- * @param {(payload:{userId:string,x:number,y:number})=>void} onCursor
- */
-export const subscribeToCursors = (canvasId, userId, onCursor) => {
-  if (cursorSubscriptions[canvasId]) return cursorSubscriptions[canvasId];
-
-  const channel = supabase
-    .channel(`cursor:canvas=${canvasId}`)
-    .on('broadcast', { event: 'cursor' }, (payload) => {
-      if (payload?.payload?.userId && payload.payload.userId !== userId) {
-        onCursor(payload.payload);
-      }
-    });
-
-  channel.subscribe();
-
-  const sub = {
-    channel,
-    unsubscribe: () => channel.unsubscribe()
-  };
-  cursorSubscriptions[canvasId] = sub;
-  return sub;
-};
-
-export const unsubscribeCursors = (canvasId) => {
-  if (cursorSubscriptions[canvasId]) {
-    cursorSubscriptions[canvasId].unsubscribe();
-    delete cursorSubscriptions[canvasId];
-  }
-};
 
 export default {
   subscribeToCanvas,
   syncPendingElements,
-  queueElementForSync,
-  sendCursorPosition,
-  subscribeToCursors,
-  unsubscribeCursors
+  queueElementForSync
 };

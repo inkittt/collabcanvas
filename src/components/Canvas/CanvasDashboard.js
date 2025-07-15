@@ -46,6 +46,8 @@ import {
   Logout as LogoutIcon,
   Brush as DrawIcon,
   Key as KeyIcon,
+  Person as PersonIcon,
+  Group as GroupIcon,
 } from '@mui/icons-material';
 
 const CanvasDashboard = () => {
@@ -59,6 +61,7 @@ const CanvasDashboard = () => {
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [selectedCanvas, setSelectedCanvas] = useState(null);
   const [newCanvasName, setNewCanvasName] = useState('');
+  const [newCanvasDescription, setNewCanvasDescription] = useState('');
   const [canvasFilter, setCanvasFilter] = useState('all'); // Filter options: 'all', 'public', 'private'
   const [isPublic, setIsPublic] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
@@ -125,7 +128,7 @@ const CanvasDashboard = () => {
 
   // Handle creating a new canvas
   const handleCreateCanvas = async () => {
-    if (!newCanvasName.trim()) return;
+    if (!newCanvasName.trim() || !newCanvasDescription.trim()) return;
     
     try {
       setLoading(true);
@@ -139,6 +142,7 @@ const CanvasDashboard = () => {
       // We'll add it to the canvas metadata directly
       const newCanvas = await CanvasService.createCanvas({
         name: newCanvasName.trim(),
+        description: newCanvasDescription.trim(),
         isPublic,
         inviteCode // Pass the invite code to the service
       });
@@ -164,6 +168,7 @@ const CanvasDashboard = () => {
       setCanvases(prev => [...prev, {...newCanvas, inviteCode}]);
       setCreateDialogOpen(false);
       setNewCanvasName('');
+      setNewCanvasDescription('');
       setIsPublic(false);
       
       // Navigate to the new canvas
@@ -306,23 +311,32 @@ const CanvasDashboard = () => {
                     <ToggleButton value="all" aria-label="all canvases">
                       All
                     </ToggleButton>
-                    <ToggleButton 
-                      value="public" 
+                    <ToggleButton
+                      value="owned"
+                      aria-label="owned canvases"
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <PersonIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        My Canvases
+                      </Box>
+                    </ToggleButton>
+                    <ToggleButton
+                      value="joined"
+                      aria-label="joined canvases"
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <GroupIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        Joined
+                      </Box>
+                    </ToggleButton>
+                    <ToggleButton
+                      value="public"
                       aria-label="public canvases"
                       startIcon={<PublicIcon fontSize="small" />}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         <PublicIcon fontSize="small" sx={{ mr: 0.5 }} />
                         Public
-                      </Box>
-                    </ToggleButton>
-                    <ToggleButton 
-                      value="private" 
-                      aria-label="private canvases"
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <LockIcon fontSize="small" sx={{ mr: 0.5 }} />
-                        Private
                       </Box>
                     </ToggleButton>
                   </ToggleButtonGroup>
@@ -385,11 +399,15 @@ const CanvasDashboard = () => {
                     <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box>
                         <Typography variant="body2" color="text.secondary">
-                          {canvasFilter === 'all' ? 
-                            `Showing all canvases (${canvases.length})` : 
-                          canvasFilter === 'public' ? 
-                            `Showing public canvases (${canvases.filter(c => c.is_public).length}/${canvases.length})` : 
-                            `Showing private canvases (${canvases.filter(c => !c.is_public).length}/${canvases.length})`
+                          {canvasFilter === 'all' ?
+                            `Showing all canvases (${canvases.length})` :
+                          canvasFilter === 'owned' ?
+                            `Showing my canvases (${canvases.filter(c => c.user_role === 'owner').length}/${canvases.length})` :
+                          canvasFilter === 'joined' ?
+                            `Showing joined canvases (${canvases.filter(c => c.user_role === 'collaborator').length}/${canvases.length})` :
+                          canvasFilter === 'public' ?
+                            `Showing public canvases (${canvases.filter(c => c.user_role === 'public').length}/${canvases.length})` :
+                            `Showing filtered canvases`
                           }
                         </Typography>
                       </Box>
@@ -408,8 +426,9 @@ const CanvasDashboard = () => {
                       {canvases
                         .filter(canvas => {
                           if (canvasFilter === 'all') return true;
-                          if (canvasFilter === 'public') return canvas.is_public;
-                          if (canvasFilter === 'private') return !canvas.is_public;
+                          if (canvasFilter === 'owned') return canvas.user_role === 'owner';
+                          if (canvasFilter === 'joined') return canvas.user_role === 'collaborator';
+                          if (canvasFilter === 'public') return canvas.user_role === 'public';
                           return true; // Fallback
                         })
                         .map((canvas) => (
@@ -451,12 +470,49 @@ const CanvasDashboard = () => {
                               <DrawIcon fontSize="inherit" />
                             </Box>
                               
-                            {/* Status badge */}
-                            <Box 
-                              sx={{ 
-                                position: 'absolute', 
-                                top: 8, 
+                            {/* Role badge */}
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
                                 right: 8,
+                                bgcolor: canvas.user_role === 'owner' ? 'success.main' :
+                                        canvas.user_role === 'collaborator' ? 'info.main' : 'grey.500',
+                                color: 'white',
+                                borderRadius: '12px',
+                                px: 1.5,
+                                py: 0.5,
+                                fontSize: '0.75rem',
+                                fontWeight: 'medium',
+                                display: 'flex',
+                                alignItems: 'center',
+                                boxShadow: 1
+                              }}
+                            >
+                              {canvas.user_role === 'owner' ? (
+                                <>
+                                  <PersonIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                  Owner
+                                </>
+                              ) : canvas.user_role === 'collaborator' ? (
+                                <>
+                                  <GroupIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                  Joined
+                                </>
+                              ) : (
+                                <>
+                                  <PublicIcon fontSize="small" sx={{ mr: 0.5 }} />
+                                  Public
+                                </>
+                              )}
+                            </Box>
+
+                            {/* Privacy badge */}
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                left: 8,
                                 bgcolor: canvas.is_public ? 'primary.main' : 'background.paper',
                                 color: canvas.is_public ? 'primary.contrastText' : 'text.secondary',
                                 borderRadius: '12px',
@@ -484,19 +540,37 @@ const CanvasDashboard = () => {
                           </Box>
 
                           <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                            <Typography 
-                              variant="h6" 
-                              component="h2" 
-                              gutterBottom 
+                            <Typography
+                              variant="h6"
+                              component="h2"
+                              gutterBottom
                               noWrap
                               sx={{ fontWeight: 'bold', mb: 1 }}
                             >
                               {canvas.name}
                             </Typography>
-                    
-                            <Box sx={{ 
-                              display: 'flex', 
-                              flexDirection: 'column', 
+
+                            {/* Canvas Description */}
+                            {canvas.description && (
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{
+                                  mb: 2,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  lineHeight: 1.4
+                                }}
+                              >
+                                {canvas.description}
+                              </Typography>
+                            )}
+
+                            <Box sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
                               gap: 0.5,
                               mb: 2,
                               color: 'text.secondary',
@@ -519,15 +593,32 @@ const CanvasDashboard = () => {
                             <Divider sx={{ my: 1 }} />
                             
                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                              <Avatar 
-                                src={canvas.profiles?.avatar_url} 
+                              <Avatar
+                                src={canvas.profiles?.avatar_url}
                                 sx={{ width: 28, height: 28, mr: 1 }}
                               >
                                 {canvas.profiles?.username ? canvas.profiles.username[0].toUpperCase() : 'U'}
                               </Avatar>
-                              <Typography variant="body2" fontWeight="medium">
-                                {canvas.profiles?.username || 'Unknown user'}
-                              </Typography>
+                              <Box sx={{ flexGrow: 1 }}>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {canvas.profiles?.username || 'Unknown user'}
+                                </Typography>
+                                {canvas.user_role === 'collaborator' && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    Canvas Owner
+                                  </Typography>
+                                )}
+                                {canvas.user_role === 'owner' && (
+                                  <Typography variant="caption" color="success.main">
+                                    You own this canvas
+                                  </Typography>
+                                )}
+                                {canvas.user_role === 'public' && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    Public canvas
+                                  </Typography>
+                                )}
+                              </Box>
                             </Box>
                           </CardContent>
                    
@@ -622,7 +713,7 @@ const CanvasDashboard = () => {
         </DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
           <DialogContentText sx={{ mb: 2, color: 'text.secondary' }}>
-            Give your canvas a name and choose its privacy setting.
+            Give your canvas a name, description, and choose its privacy setting.
           </DialogContentText>
           <TextField
             autoFocus
@@ -632,7 +723,7 @@ const CanvasDashboard = () => {
             fullWidth
             value={newCanvasName}
             onChange={(e) => setNewCanvasName(e.target.value)}
-            sx={{ 
+            sx={{
               mt: 1,
               mb: 2,
               '& .MuiOutlinedInput-root': {
@@ -646,6 +737,25 @@ const CanvasDashboard = () => {
                 </InputAdornment>
               ),
             }}
+          />
+
+          <TextField
+            margin="dense"
+            label="Description *"
+            placeholder="Describe what this canvas room is for so others know its purpose..."
+            fullWidth
+            multiline
+            rows={3}
+            value={newCanvasDescription}
+            onChange={(e) => setNewCanvasDescription(e.target.value)}
+            required
+            sx={{
+              mb: 2,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 1.5,
+              }
+            }}
+            helperText="Required: Help others understand what this canvas room is for"
           />
           
           <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'medium' }}>
@@ -700,12 +810,12 @@ const CanvasDashboard = () => {
           >
             Cancel
           </Button>
-          <Button 
-            onClick={handleCreateCanvas} 
+          <Button
+            onClick={handleCreateCanvas}
             color="primary"
             variant="contained"
-            disabled={!newCanvasName.trim()}
-            sx={{ 
+            disabled={!newCanvasName.trim() || !newCanvasDescription.trim()}
+            sx={{
               borderRadius: 1.5,
               textTransform: 'none',
               fontWeight: 'bold',

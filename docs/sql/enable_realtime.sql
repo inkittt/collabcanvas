@@ -11,7 +11,9 @@ CREATE PUBLICATION supabase_realtime FOR TABLE
   public.profiles,
   public.canvases,
   public.canvas_collaborators,
-  public.elements;
+  public.elements,
+  public.community_messages,
+  public.canvas_messages;
 
 -- You can add more tables to the publication as needed
 
@@ -20,9 +22,13 @@ COMMIT;
 -- Test by updating the schema.graphql to include the realtime subscriptions
 COMMENT ON TABLE public.elements IS E'@graphql({"subscription": true})';
 COMMENT ON TABLE public.canvas_collaborators IS E'@graphql({"subscription": true})';
+COMMENT ON TABLE public.community_messages IS E'@graphql({"subscription": true})';
+COMMENT ON TABLE public.canvas_messages IS E'@graphql({"subscription": true})';
 
 -- Enable row level security on all tables (if not already enabled)
 ALTER TABLE IF EXISTS public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.canvases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.canvas_collaborators ENABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.elements ENABLE ROW LEVEL SECURITY; 
+ALTER TABLE IF EXISTS public.elements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.community_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.canvas_messages ENABLE ROW LEVEL SECURITY;

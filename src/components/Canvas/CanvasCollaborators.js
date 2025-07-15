@@ -1,20 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { CanvasService } from '../../services/canvasService';
-import { ProfileService } from '../../services/profileService';
 import {
   Box,
-  Button,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   FormControl,
   IconButton,
-  InputLabel,
   List,
   ListItem,
   ListItemAvatar,
@@ -23,26 +16,17 @@ import {
   MenuItem,
   Paper,
   Select,
-  TextField,
   Typography,
   Avatar,
 } from '@mui/material';
 import {
-  Add as AddIcon,
   Delete as DeleteIcon,
-  Search as SearchIcon,
 } from '@mui/icons-material';
 
 const CanvasCollaborators = ({ canvasId, canvasOwnerId }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [collaborators, setCollaborators] = useState([]);
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [permissionLevel, setPermissionLevel] = useState('viewer');
   const [isOwner, setIsOwner] = useState(false);
 
   // Check if current user is the owner
@@ -71,69 +55,7 @@ const CanvasCollaborators = ({ canvasId, canvasOwnerId }) => {
     loadCollaborators();
   }, [canvasId]);
 
-  // Search for users
-  const handleSearch = async () => {
-    if (!searchQuery || searchQuery.length < 3) {
-      setSearchResults([]);
-      return;
-    }
-    
-    try {
-      setSearching(true);
-      const results = await ProfileService.searchUsers(searchQuery);
-      
-      // Filter out users who are already collaborators or the owner
-      const filteredResults = results.filter(result => {
-        const isAlreadyCollaborator = collaborators.some(
-          collab => collab.profiles?.id === result.id
-        );
-        const isCanvasOwner = result.id === canvasOwnerId;
-        
-        return !isAlreadyCollaborator && !isCanvasOwner;
-      });
-      
-      setSearchResults(filteredResults);
-    } catch (error) {
-      console.error('Error searching users:', error);
-    } finally {
-      setSearching(false);
-    }
-  };
 
-  // Add a collaborator
-  const handleAddCollaborator = async () => {
-    if (!selectedUser || !canvasId) return;
-    
-    try {
-      setLoading(true);
-      
-      const newCollaborator = await CanvasService.addCollaborator(
-        canvasId,
-        selectedUser.id,
-        permissionLevel
-      );
-      
-      // Add user profile data to the new collaborator
-      const collaboratorWithProfile = {
-        ...newCollaborator,
-        profiles: selectedUser,
-      };
-      
-      setCollaborators(prev => [...prev, collaboratorWithProfile]);
-      
-      // Reset state
-      setAddDialogOpen(false);
-      setSelectedUser(null);
-      setSearchQuery('');
-      setSearchResults([]);
-      setPermissionLevel('viewer');
-      
-    } catch (error) {
-      console.error('Error adding collaborator:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Update collaborator permissions
   const handleUpdatePermission = async (collaboratorId, newPermission) => {
@@ -190,16 +112,6 @@ const CanvasCollaborators = ({ canvasId, canvasOwnerId }) => {
     <Paper sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Collaborators</Typography>
-        {isOwner && (
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AddIcon />}
-            onClick={() => setAddDialogOpen(true)}
-          >
-            Add Collaborator
-          </Button>
-        )}
       </Box>
       
       <Divider sx={{ mb: 2 }} />
@@ -226,9 +138,9 @@ const CanvasCollaborators = ({ canvasId, canvasOwnerId }) => {
         {/* Collaborators */}
         {collaborators.length === 0 ? (
           <ListItem>
-            <ListItemText 
-              primary="No collaborators yet" 
-              secondary="Add collaborators to work together on this canvas" 
+            <ListItemText
+              primary="No collaborators yet"
+              secondary="This canvas has no additional collaborators"
             />
           </ListItem>
         ) : (
@@ -278,82 +190,7 @@ const CanvasCollaborators = ({ canvasId, canvasOwnerId }) => {
         )}
       </List>
 
-      {/* Add Collaborator Dialog */}
-      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)}>
-        <DialogTitle>Add Collaborator</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', alignItems: 'flex-end', mb: 2 }}>
-            <TextField
-              label="Search by username"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              fullWidth
-              sx={{ mr: 1 }}
-            />
-            <IconButton 
-              onClick={handleSearch}
-              disabled={searchQuery.length < 3 || searching}
-            >
-              {searching ? <CircularProgress size={24} /> : <SearchIcon />}
-            </IconButton>
-          </Box>
-          
-          <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-            {searchResults.length === 0 ? (
-              <ListItem>
-                <ListItemText 
-                  primary="No users found" 
-                  secondary={
-                    searchQuery.length < 3 
-                      ? "Type at least 3 characters to search" 
-                      : "Try a different search term"
-                  } 
-                />
-              </ListItem>
-            ) : (
-              searchResults.map(user => (
-                <ListItem 
-                  key={user.id}
-                  button
-                  selected={selectedUser?.id === user.id}
-                  onClick={() => setSelectedUser(user)}
-                >
-                  <ListItemAvatar>
-                    <Avatar src={user.avatar_url}>
-                      {user.username ? user.username[0].toUpperCase() : 'U'}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText primary={user.username} />
-                </ListItem>
-              ))
-            )}
-          </List>
-          
-          {selectedUser && (
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Permission</InputLabel>
-              <Select
-                value={permissionLevel}
-                label="Permission"
-                onChange={(e) => setPermissionLevel(e.target.value)}
-              >
-                <MenuItem value="viewer">Viewer (can only view)</MenuItem>
-                <MenuItem value="editor">Editor (can make changes)</MenuItem>
-              </Select>
-            </FormControl>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={handleAddCollaborator} 
-            color="primary"
-            disabled={!selectedUser}
-          >
-            Add
-          </Button>
-        </DialogActions>
-      </Dialog>
+
     </Paper>
   );
 };

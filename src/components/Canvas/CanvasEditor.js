@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { fabric } from 'fabric';
 import { useAuth } from '../../auth/AuthContext';
-import { subscribeToCanvas, sendCursorPosition, subscribeToCursors, unsubscribeCursors } from '../../lib/realtimeService';
+import { subscribeToCanvas } from '../../lib/realtimeService';
 import { CanvasService } from '../../services/canvasService';
 import { ElementService } from '../../services/elementService';
 import { ProfileService } from '../../services/profileService';
 import { uploadImage } from '../../services/cloudinaryService';
 import CollaborativeImageEditor from './CollaborativeImageEditor';
 import AdvancedImageEditor from '../ImageEditor/AdvancedImageEditor';
-import CursorIndicator from './CursorIndicator';
 import ExportDialog from './ExportDialog';
 import {
   Box,
@@ -104,11 +103,9 @@ const CanvasEditor = ({
   const elementsLoadedRef = useRef(false); // Track if elements have been loaded
   const activeToolRef = useRef(activeTool); // Track current tool for event handlers
 
-  // Cursor tracking state
-  const [otherUsersCursors, setOtherUsersCursors] = useState({}); // Track other users' cursor positions
-  const cursorSubscriptionRef = useRef(null); // Track cursor subscription
-  const cursorThrottleRef = useRef(null); // For throttling cursor position updates
   const [userProfile, setUserProfile] = useState(null); // Current user's profile
+
+
 
   // Load user profile
   useEffect(() => {
@@ -126,6 +123,8 @@ const CanvasEditor = ({
       loadProfile();
     }
   }, [user]);
+
+
 
   // Save current canvas state to undo stack
   const saveCanvasState = useCallback(() => {
@@ -603,17 +602,30 @@ const CanvasEditor = ({
 
   // Remove an element from the canvas
   const removeElementFromCanvas = useCallback((elementId) => {
-    if (!fabricCanvasRef.current) return;
-    
+    console.log('🗑️ removeElementFromCanvas called with elementId:', elementId);
+
+    if (!fabricCanvasRef.current) {
+      console.warn('🗑️ Canvas not available for element removal');
+      return;
+    }
+
     const canvas = fabricCanvasRef.current;
     const objects = canvas.getObjects();
-    
+
+    console.log('🗑️ Current canvas objects:', objects.length);
+    console.log('🗑️ Looking for object with ID:', elementId);
+
     // Find the object with matching ID
     const obj = objects.find(obj => obj.id === elementId);
-    
+
     if (obj) {
+      console.log('🗑️ Found object to remove:', obj.type, obj.id);
       canvas.remove(obj);
       safeRenderCanvas(canvas);
+      console.log('🗑️ Element removed from canvas successfully');
+    } else {
+      console.warn('🗑️ Object not found on canvas for deletion:', elementId);
+      console.log('🗑️ Available object IDs:', objects.map(o => o.id));
     }
   }, [safeRenderCanvas]);
 
@@ -800,24 +812,7 @@ const CanvasEditor = ({
     
     window.addEventListener('resize', handleResize);
 
-    // Cursor tracking - mouse move event (works for all users, including viewers)
-    const handleMouseMove = (options) => {
-      if (!canvasId || !userId) return;
 
-      const pointer = fabricCanvas.getPointer(options.e);
-
-      // Throttle cursor position updates to avoid overwhelming the server
-      if (cursorThrottleRef.current) {
-        clearTimeout(cursorThrottleRef.current);
-      }
-
-      cursorThrottleRef.current = setTimeout(() => {
-        console.log('🖱️ Sending cursor position for user:', userId, 'at:', pointer.x, pointer.y);
-        sendCursorPosition(canvasId, userId, { x: pointer.x, y: pointer.y }, userProfile);
-      }, 50); // Send cursor position every 50ms at most
-    };
-
-    fabricCanvas.on('mouse:move', handleMouseMove);
 
     if (!readOnly) {
       // Mouse down event for creating shapes
@@ -1085,9 +1080,12 @@ const CanvasEditor = ({
                 }
               },
               onElementDeleted: (elementId) => {
-                if (elementId && elementsLoadedRef.current) {
+                if (elementId) {
                   console.log('🔥 Real-time: Element deleted:', elementId);
+                  console.log('🔥 Elements loaded state:', elementsLoadedRef.current);
                   removeElementFromCanvas(elementId);
+                } else {
+                  console.warn('🔥 Real-time: Received delete event with no elementId');
                 }
               },
             });
@@ -1098,33 +1096,7 @@ const CanvasEditor = ({
           console.log('Real-time subscription already exists, skipping');
         }
 
-        // Set up cursor tracking subscription (always try to set up, even if one exists)
-        if (userId) {
-          try {
-            // Clean up existing subscription first
-            if (cursorSubscriptionRef.current) {
-              cursorSubscriptionRef.current.unsubscribe();
-              cursorSubscriptionRef.current = null;
-            }
 
-            console.log('🖱️ Setting up cursor tracking for canvas:', canvasId, 'user:', userId);
-            cursorSubscriptionRef.current = subscribeToCursors(canvasId, userId, (cursorData) => {
-              console.log('🖱️ Received cursor from user:', cursorData.userId, 'at position:', cursorData.x, cursorData.y);
-              setOtherUsersCursors(prev => ({
-                ...prev,
-                [cursorData.userId]: {
-                  x: cursorData.x,
-                  y: cursorData.y,
-                  username: cursorData.username,
-                  avatar_url: cursorData.avatar_url,
-                  timestamp: Date.now()
-                }
-              }));
-            });
-          } catch (cursorError) {
-            console.warn('Error setting up cursor tracking:', cursorError);
-          }
-        }
         
         clearTimeout(timeout);
         setLoading(false);
@@ -1143,7 +1115,7 @@ const CanvasEditor = ({
     return () => {
       clearTimeout(loadingTimeout);
       clearTimeout(updateTimeoutRef.current);
-      clearTimeout(cursorThrottleRef.current);
+
       window.removeEventListener('resize', handleResize);
 
       // Clear element states tracking
@@ -1161,12 +1133,7 @@ const CanvasEditor = ({
         subscriptionRef.current = null;
       }
 
-      // Clean up cursor subscription
-      if (cursorSubscriptionRef.current) {
-        console.log('🖱️ Cleaning up cursor tracking');
-        unsubscribeCursors(canvasId);
-        cursorSubscriptionRef.current = null;
-      }
+
 
       if (fabricCanvasRef.current) {
         fabricCanvasRef.current.dispose();
@@ -1175,29 +1142,7 @@ const CanvasEditor = ({
     };
   }, [canvasId, userId]); // Removed problematic dependencies that cause re-initialization
 
-  // Clean up stale cursors periodically
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      const staleThreshold = 5000; // 5 seconds
 
-      setOtherUsersCursors(prev => {
-        const updated = { ...prev };
-        let hasChanges = false;
-
-        Object.keys(updated).forEach(userId => {
-          if (now - updated[userId].timestamp > staleThreshold) {
-            delete updated[userId];
-            hasChanges = true;
-          }
-        });
-
-        return hasChanges ? updated : prev;
-      });
-    }, 2000); // Check every 2 seconds
-
-    return () => clearInterval(cleanupInterval);
-  }, []);
 
   // Handle undo
   const handleUndo = useCallback(() => {
@@ -1278,6 +1223,38 @@ const CanvasEditor = ({
       saveCanvasState();
     }
   }, [saveCanvasState]);
+
+  // Keyboard event handling for delete key
+  useEffect(() => {
+    if (readOnly) return; // Don't add keyboard listeners in read-only mode
+
+    const handleKeyDown = (e) => {
+      // Check if we're focused on an input element
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.contentEditable === 'true'
+      );
+
+      // Don't handle delete key if user is typing in an input
+      if (isInputFocused) return;
+
+      // Handle Delete or Backspace key
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault(); // Prevent browser back navigation on Backspace
+        handleDelete();
+      }
+    };
+
+    // Add event listener to document
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [readOnly, handleDelete]);
 
   return (
     <Box sx={{ position: 'relative', height: '100%' }}>
@@ -1460,37 +1437,7 @@ const CanvasEditor = ({
       >
         <canvas ref={canvasRef} />
 
-        {/* Other users' cursors */}
-        {Object.entries(otherUsersCursors).map(([userId, cursor]) => (
-          <CursorIndicator
-            key={userId}
-            userId={userId}
-            x={cursor.x}
-            y={cursor.y}
-            username={cursor.username}
-            avatar_url={cursor.avatar_url}
-          />
-        ))}
 
-        {/* Debug: Show cursor count */}
-        {Object.keys(otherUsersCursors).length > 0 && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              backgroundColor: 'primary.main',
-              color: 'primary.contrastText',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              pointerEvents: 'none',
-              zIndex: 1001,
-            }}
-          >
-            👥 {Object.keys(otherUsersCursors).length} cursor{Object.keys(otherUsersCursors).length !== 1 ? 's' : ''}
-          </Box>
-        )}
       </Box>
       
       {Object.keys(activeUsers).length > 0 && (
@@ -1579,6 +1526,8 @@ const CanvasEditor = ({
         onClose={() => setExportDialogOpen(false)}
         fabricCanvas={fabricCanvasRef.current}
       />
+
+
     </Box>
   );
 };

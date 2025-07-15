@@ -115,61 +115,60 @@ const CommunityChat = () => {
         }
       }
 
-      // Try two different approaches to get messages to handle both schema possibilities
-      let messagesData = [];
-      
-      // Approach 1: Using the joined query (standard approach)
-      const { data: joinedData, error: joinedError } = await supabase
+      // Use a simpler, more reliable approach
+      console.log('Loading community messages...');
+
+      // Get messages first
+      const { data: messagesData, error: messagesError } = await supabase
         .from('community_messages')
-        .select(`
-          id,
-          content,
-          created_at,
-          user_id,
-          profiles:user_id (username, avatar_url)
-        `)
+        .select('*')
         .order('created_at', { ascending: true })
         .limit(50);
-        
-      if (!joinedError && joinedData) {
-        messagesData = joinedData;
-      } else {
-        // Approach 2: Simpler query without joins
-        const { data: simpleData, error: simpleError } = await supabase
-          .from('community_messages')
-          .select('*')
-          .order('created_at', { ascending: true })
-          .limit(50);
-          
-        if (!simpleError && simpleData) {
-          // We have the messages but need to add profile info
-          messagesData = simpleData;
-          
-          // Fetch and attach profile info for each unique user
-          const userIds = [...new Set(simpleData.map(msg => msg.user_id))];
-          
-          if (userIds.length > 0) {
-            const { data: profilesData } = await supabase
-              .from('profiles')
-              .select('id, username, avatar_url')
-              .in('id', userIds);
-              
-            if (profilesData) {
-              const profilesMap = profilesData.reduce((map, profile) => {
-                map[profile.id] = profile;
-                return map;
-              }, {});
-              
-              messagesData = simpleData.map(msg => ({
-                ...msg,
-                profiles: profilesMap[msg.user_id] || null
-              }));
-            }
-          }
-        } else if (simpleError) {
-          throw simpleError;
-        }
+
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError);
+        throw messagesError;
       }
+
+      console.log('Fetched messages:', messagesData?.length || 0);
+
+      if (!messagesData || messagesData.length === 0) {
+        setMessages([]);
+        scrollToBottom();
+        return;
+      }
+
+      // Get unique user IDs
+      const userIds = [...new Set(messagesData.map(msg => msg.user_id))];
+      console.log('Fetching profiles for users:', userIds);
+
+      // Get profiles for all users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Continue without profiles rather than failing completely
+      }
+
+      console.log('Fetched profiles:', profilesData?.length || 0);
+
+      // Create profiles map
+      const profilesMap = (profilesData || []).reduce((map, profile) => {
+        map[profile.id] = profile;
+        return map;
+      }, {});
+
+      // Combine messages with profile data
+      const formattedMessages = messagesData.map(msg => ({
+        ...msg,
+        profiles: profilesMap[msg.user_id] || { username: 'Unknown User', avatar_url: null }
+      }));
+
+      console.log('Setting messages:', formattedMessages.length);
+      setMessages(formattedMessages);
 
       setMessages(messagesData);
       scrollToBottom();
@@ -181,34 +180,53 @@ const CommunityChat = () => {
     }
   };
 
+  // Debug function to test database connection
+  const testDatabaseConnection = async () => {
+    console.log('=== TESTING DATABASE CONNECTION ===');
+    try {
+      // Test 1: Simple count query
+      const { data: countData, error: countError } = await supabase
+        .from('community_messages')
+        .select('*', { count: 'exact', head: true });
+
+      console.log('Count test result:', { countData, countError });
+
+      // Test 2: Simple select query
+      const { data: selectData, error: selectError } = await supabase
+        .from('community_messages')
+        .select('id, content, created_at')
+        .limit(5);
+
+      console.log('Select test result:', { selectData, selectError });
+
+      // Test 3: Auth status
+      const { data: authData } = await supabase.auth.getSession();
+      console.log('Auth status:', authData?.session?.user?.id || 'Not authenticated');
+
+    } catch (err) {
+      console.error('Database test failed:', err);
+    }
+  };
+
   // Load initial messages and set up subscription
   useEffect(() => {
-    // Setup database and then load messages
-    if (user) {
-      setupDatabase().then(success => {
-        if (success) {
-          console.log('Database setup successful');
-        } else {
-          console.warn('Database setup had issues, but continuing');
-        }
-        // Load messages anyway, even if setup had issues
-        loadMessages();
-      });
-    } else {
-      loadMessages();
-    }
+    console.log('CommunityChat useEffect triggered, user:', user?.id);
+    // Load messages directly - the database should already be set up
+    loadMessages();
 
     // Subscribe to new messages
+    console.log('Setting up real-time subscription for community messages');
     const subscription = supabase
       .channel('community_messages')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
         table: 'community_messages'
       }, (payload) => {
+        console.log('Received new message via real-time:', payload.new);
         // Format the new message to match our message structure
         const newMsg = payload.new;
-        
+
         // Get the profile info
         supabase
           .from('profiles')
@@ -218,9 +236,20 @@ const CommunityChat = () => {
           .then(({ data }) => {
             const formattedMessage = {
               ...newMsg,
-              profiles: data
+              profiles: data || { username: 'Unknown User', avatar_url: null }
             };
-            
+
+            console.log('Adding new message to state:', formattedMessage);
+            setMessages(prevMessages => [...prevMessages, formattedMessage]);
+            scrollToBottom();
+          })
+          .catch(err => {
+            console.error('Error fetching profile for new message:', err);
+            // Add message without profile info
+            const formattedMessage = {
+              ...newMsg,
+              profiles: { username: 'Unknown User', avatar_url: null }
+            };
             setMessages(prevMessages => [...prevMessages, formattedMessage]);
             scrollToBottom();
           });
@@ -355,16 +384,26 @@ const CommunityChat = () => {
           </Box>
         </Box>
         
-        <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-            {user ? `Logged in as ${profile?.username || 'user'}` : 'Sign in to chat'}
-          </Typography>
-          {user && profile?.avatar_url && (
-            <Avatar 
-              src={profile.avatar_url} 
-              sx={{ width: 24, height: 24 }}
-            />
-          )}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={testDatabaseConnection}
+            sx={{ fontSize: '0.7rem', py: 0.5, px: 1 }}
+          >
+            Debug
+          </Button>
+          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+              {user ? `Logged in as ${profile?.username || 'user'}` : 'Sign in to chat'}
+            </Typography>
+            {user && profile?.avatar_url && (
+              <Avatar
+                src={profile.avatar_url}
+                sx={{ width: 24, height: 24 }}
+              />
+            )}
+          </Box>
         </Box>
       </Box>
       
@@ -410,9 +449,9 @@ const CommunityChat = () => {
             }}>
               <Typography sx={{ fontWeight: 'medium' }}>{error}</Typography>
             </Box>
-            <Button 
-              variant="contained" 
-              color="primary" 
+            <Button
+              variant="contained"
+              color="primary"
               size="large"
               onClick={() => {
                 if (user) {
@@ -425,6 +464,15 @@ const CommunityChat = () => {
               sx={{ borderRadius: '20px', textTransform: 'none', px: 3 }}
             >
               Try Again
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              size="small"
+              onClick={testDatabaseConnection}
+              sx={{ borderRadius: '20px', textTransform: 'none', px: 2 }}
+            >
+              Debug Connection
             </Button>
           </Box>
         ) : messages.length > 0 ? (

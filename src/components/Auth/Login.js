@@ -3,12 +3,12 @@ import { useAuth } from '../../auth/AuthContext';
 import { Box, TextField, Button, Typography, Paper, Divider, Link, Alert } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 
-const Login = ({ switchToSignUp, switchToReset }) => {
+const Login = ({ switchToSignUp }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const { signIn, signInWithGoogle, signInAsGuest } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -40,20 +40,7 @@ const Login = ({ switchToSignUp, switchToReset }) => {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    
-    try {
-      await signInAsGuest();
-      // Guest login state is handled by auth context
-    } catch (error) {
-      console.error('Guest login error:', error);
-      setErrorMessage(error.message || 'Failed to sign in as guest');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 400, mx: 'auto' }}>
@@ -92,16 +79,7 @@ const Login = ({ switchToSignUp, switchToReset }) => {
           disabled={loading}
         />
         
-        <Box sx={{ textAlign: 'right', mt: 1, mb: 2 }}>
-          <Link
-            component="button"
-            variant="body2"
-            onClick={switchToReset}
-            type="button"
-          >
-            Forgot password?
-          </Link>
-        </Box>
+
         
         <Button
           type="submit"
@@ -129,18 +107,8 @@ const Login = ({ switchToSignUp, switchToReset }) => {
         startIcon={<GoogleIcon />}
         onClick={handleGoogleLogin}
         disabled={loading}
-        sx={{ mb: 2 }}
       >
         Sign in with Google
-      </Button>
-      
-      <Button
-        variant="outlined"
-        fullWidth
-        onClick={handleGuestLogin}
-        disabled={loading}
-      >
-        Continue as Guest
       </Button>
       
       <Box sx={{ mt: 3, textAlign: 'center' }}>

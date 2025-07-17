@@ -7,7 +7,7 @@ import { ElementService } from '../../services/elementService';
 import { ProfileService } from '../../services/profileService';
 import { uploadImage } from '../../services/cloudinaryService';
 import CollaborativeImageEditor from './CollaborativeImageEditor';
-import AdvancedImageEditor from '../ImageEditor/AdvancedImageEditor';
+
 import ExportDialog from './ExportDialog';
 import {
   Box,
@@ -19,8 +19,7 @@ import {
   Divider,
   Avatar,
   AvatarGroup,
-  Menu,
-  MenuItem,
+
 } from '@mui/material';
 import {
   Undo as UndoIcon,
@@ -31,7 +30,7 @@ import {
   TextFields as TextIcon,
   PanTool as PanToolIcon,
   Image as ImageIcon,
-  Edit as EditIcon,
+
   Crop as CropIcon,
   Palette as PaletteIcon,
   Tune as TuneIcon,
@@ -65,7 +64,7 @@ const CanvasEditor = ({
   const [redoStack, setRedoStack] = useState([]);
   const [userId, setUserId] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [contextMenuPosition, setContextMenuPosition] = useState(null);
+
   const [fileInputRef] = useState(React.createRef());
   const [imageEditorOpen, setImageEditorOpen] = useState(false);
   const [selectedImageElement, setSelectedImageElement] = useState(null);
@@ -92,7 +91,7 @@ const CanvasEditor = ({
       console.warn('Canvas render error:', renderError);
     }
   }, []);
-  const [advancedEditorOpen, setAdvancedEditorOpen] = useState(false);
+
   const [imageEditingMode, setImageEditingMode] = useState(false);
   const [showImageEditingSidebar, setShowImageEditingSidebar] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -478,15 +477,7 @@ const CanvasEditor = ({
             img.applyFilters();
           }
 
-          // Add context menu event for editing
-          img.on('contextmenu', (e) => {
-            if (readOnly) return;
 
-            // Show context menu
-            setContextMenuPosition({ left: e.e.clientX, top: e.e.clientY });
-            setSelectedImage(img);
-            e.e.preventDefault();
-          });
 
           try {
             canvas.add(img);
@@ -650,27 +641,7 @@ const CanvasEditor = ({
     }
   }, [onImageEditingModeChange, onShowImageEditingSidebar]);
 
-  // Open image editor for existing image
-  const openImageEditor = useCallback(async () => {
-    if (!selectedImage) return;
 
-    try {
-      // Find the element data for this image
-      const elements = await ElementService.getCanvasElements(canvasId);
-      const imageElement = elements.find(el => el.id === selectedImage.id);
-
-      if (imageElement) {
-        setSelectedImageElement(imageElement);
-        setImageEditorOpen(true);
-      } else {
-        console.error('Could not find image element data');
-      }
-    } catch (error) {
-      console.error('Error opening image editor:', error);
-    }
-
-    setContextMenuPosition(null);
-  }, [selectedImage, canvasId]);
 
   // Handle image update from collaborative editor
   const handleImageUpdate = useCallback((updatedElement) => {
@@ -681,10 +652,7 @@ const CanvasEditor = ({
     setSelectedImageElement(updatedElement);
   }, [updateElementOnCanvas]);
 
-  // Handle context menu close
-  const handleContextMenuClose = useCallback(() => {
-    setContextMenuPosition(null);
-  }, []);
+
 
   // Handle image editing tool selection
   const handleImageEditingTool = useCallback((tool) => {
@@ -1335,15 +1303,7 @@ const CanvasEditor = ({
             </IconButton>
           </Tooltip>
 
-          <Tooltip title="Advanced Image Editor">
-            <IconButton
-              onClick={() => setAdvancedEditorOpen(true)}
-              color="secondary"
-              disabled={readOnly}
-            >
-              <EditIcon />
-            </IconButton>
-          </Tooltip>
+
 
           {/* Image Editing Tools - Only show when an image is selected */}
           {imageEditingMode && selectedImage && (
@@ -1461,22 +1421,7 @@ const CanvasEditor = ({
         </Box>
       )}
       
-      {/* Context Menu for Images */}
-      <Menu
-        open={Boolean(contextMenuPosition)}
-        onClose={handleContextMenuClose}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          contextMenuPosition
-            ? { top: contextMenuPosition.top, left: contextMenuPosition.left }
-            : undefined
-        }
-      >
-        <MenuItem onClick={openImageEditor}>
-          <EditIcon fontSize="small" sx={{ mr: 1 }} />
-          Advanced Edit
-        </MenuItem>
-      </Menu>
+
 
       {/* Collaborative Image Editor */}
       <CollaborativeImageEditor
@@ -1487,38 +1432,7 @@ const CanvasEditor = ({
         onImageUpdate={handleImageUpdate}
       />
 
-      {/* Advanced Image Editor */}
-      <AdvancedImageEditor
-        open={advancedEditorOpen}
-        onClose={() => setAdvancedEditorOpen(false)}
-        canvasId={canvasId}
-        onSave={async (result) => {
-          console.log('Advanced editor saved image:', result);
 
-          // Create a new image element on the canvas
-          if (result.url) {
-            try {
-              const imageData = {
-                element_type: 'image',
-                data: {
-                  left: 100,
-                  top: 100,
-                  scaleX: 1,
-                  scaleY: 1,
-                  src: result.url,
-                  originalUrl: result.originalUrl,
-                  transformation: result.transformation,
-                },
-              };
-
-              await ElementService.addCanvasElement(canvasId, imageData);
-              setAdvancedEditorOpen(false);
-            } catch (error) {
-              console.error('Error adding processed image to canvas:', error);
-            }
-          }
-        }}
-      />
 
       {/* Export Dialog */}
       <ExportDialog

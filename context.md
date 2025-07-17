@@ -5,7 +5,7 @@
 - **Platform:** Web  
 - **Summary:** CollabCanvas is a real-time collaborative image editing platform designed for both amateurs and professionals. It enables seamless teamwork with Operational Transformation (OT) and Conflict-Free Replicated Data Types (CRDTs) to resolve edit conflicts while maintaining data consistency. The app includes a minimalist dashboard, live chat, and WebRTC-powered video calls for real-time discussions. Built with React.js (Next.js) and Supabase, it prioritizes accessibility, performance, and user feedback-driven improvements.  
 - **Primary Use Case:** Teams or individuals collaborating on image editing projects in real-time with conflict resolution, chat, and video call support.  
-- **Authentication Requirements:** Email/password login, Google OAuth, and guest access (read-only mode).  
+- **Authentication Requirements:** Email/password login and Google OAuth.
 
 ---  
 
@@ -22,9 +22,9 @@
    - OT/CRDT-based conflict resolution for overlapping edits.  
    - Multi-user brush strokes, filters, and layer adjustments synced instantly.  
 
-2. **User Authentication & Permissions**  
-   - Email/password, Google OAuth, and guest access.  
-   - Role-based permissions (owner, editor, viewer).  
+2. **User Authentication & Permissions**
+   - Email/password and Google OAuth.
+   - Role-based permissions (owner, editor, viewer).
 
 3. **Project Dashboard**  
    - Create/join editing spaces with public/private toggles.  

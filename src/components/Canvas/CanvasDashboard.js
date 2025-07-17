@@ -6,7 +6,7 @@ import { CanvasService } from '../../services/canvasService';
 import { ProfileService } from '../../services/profileService';
 import CommunityChat from '../Chat/CommunityChat';
 import UserMenu from '../Profile/UserMenu';
-import logo from '../../assets/collabcanvas-logo.svg';
+import logo from '../../assets/latest-collabcanvas-logo.png';
 import {
   Alert,
   Box,

@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { VoiceChatProvider } from './contexts/VoiceChatContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import AuthForm from './components/Auth/AuthForm';
-import UpdatePassword from './components/Auth/UpdatePassword';
+
 import CanvasDashboard from './components/Canvas/CanvasDashboard';
 import CanvasPage from './components/Canvas/CanvasPage';
 import IntroductionPage from './components/Introduction/IntroductionPage';
@@ -449,7 +449,7 @@ const AppContent = () => {
       <Route path="/auth" element={
         user ? <Navigate to="/dashboard" /> : <AuthForm />
       } />
-      <Route path="/reset-password" element={<UpdatePassword />} />
+
       <Route path="/dashboard" element={
         <PrivateRoute>
           <CanvasDashboard />

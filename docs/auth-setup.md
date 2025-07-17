@@ -107,8 +107,6 @@ The authentication system in CollabCanvas consists of:
 - `src/auth/AuthContext.js`: Authentication context for user state
 - `src/components/Auth/Login.js`: Login form
 - `src/components/Auth/SignUp.js`: Sign up form
-- `src/components/Auth/ResetPassword.js`: Password reset request
-- `src/components/Auth/UpdatePassword.js`: Password update form
 - `src/components/Auth/AuthForm.js`: Combines login and signup forms
 - `src/lib/supabase.js`: Supabase client setup
 
@@ -119,8 +117,6 @@ The authentication system in CollabCanvas consists of:
 3. Verify email confirmation process
 4. Try signing in
 5. Test Google OAuth integration
-6. Test guest access
-7. Test password reset functionality
 
 ## Troubleshooting
 

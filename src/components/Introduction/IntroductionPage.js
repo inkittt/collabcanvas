@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../../assets/collabcanvas-logo-with-text.svg';
+import logo from '../../assets/latest-collabcanvas-logo.png';
 import {
   Box,
   Button,

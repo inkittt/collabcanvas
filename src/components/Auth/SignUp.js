@@ -10,7 +10,7 @@ const SignUp = ({ switchToLogin }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const { signUp, signInWithGoogle, signInAsGuest } = useAuth();
+  const { signUp, signInWithGoogle } = useAuth();
 
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -66,20 +66,7 @@ const SignUp = ({ switchToLogin }) => {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    
-    try {
-      await signInAsGuest();
-      // Guest login state is handled by auth context
-    } catch (error) {
-      console.error('Guest login error:', error);
-      setErrorMessage(error.message || 'Failed to sign in as guest');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 400, mx: 'auto' }}>
@@ -169,18 +156,8 @@ const SignUp = ({ switchToLogin }) => {
         startIcon={<GoogleIcon />}
         onClick={handleGoogleSignUp}
         disabled={loading}
-        sx={{ mb: 2 }}
       >
         Sign up with Google
-      </Button>
-      
-      <Button
-        variant="outlined"
-        fullWidth
-        onClick={handleGuestLogin}
-        disabled={loading}
-      >
-        Continue as Guest
       </Button>
       
       <Box sx={{ mt: 3, textAlign: 'center' }}>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { CanvasService } from '../../services/canvasService';
-import logo from '../../assets/collabcanvas-logo.svg';
+import logo from '../../assets/latest-collabcanvas-logo.png';
 import CanvasEditor from './CanvasEditor';
 import CanvasCollaborators from './CanvasCollaborators';
 import ChatPanel from '../Chat/ChatPanel';

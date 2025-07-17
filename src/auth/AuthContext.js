@@ -165,65 +165,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Sign in as a guest
-  const signInAsGuest = async () => {
-    try {
-      console.log('Signing in as guest');
-      setLoading(true);
-      
-      // Generate a unique identifier for the guest
-      const guestId = 'guest_' + Math.random().toString(36).substring(2, 9);
-      const username = 'Guest_' + Math.random().toString(36).substring(2, 4);
-      
-      console.log('Generated guest ID:', guestId);
-      
-      // Store guest identifier in local storage
-      localStorage.setItem('guestId', guestId);
-      localStorage.setItem('guestName', username);
-      
-      // Create a guest user object that mimics the structure of a real user
-      const guestUser = {
-        id: guestId,
-        email: `${guestId}@guest.collabcanvas.com`,
-        user_metadata: {
-          username: username
-        },
-        app_metadata: {
-          provider: 'guest'
-        },
-        role: 'guest',
-        isGuest: true,
-        aud: 'authenticated',
-        created_at: new Date().toISOString()
-      };
-      
-      console.log('Created guest user object:', guestUser);
-      
-      // Set the user in state
-      setUser(guestUser);
-      
-      return { user: guestUser };
-    } catch (error) {
-      console.error('Error creating guest user:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   // Sign out
   const signOut = async () => {
     try {
       setLoading(true);
-      // If user is a guest, just remove the guest data
-      if (user?.isGuest) {
-        localStorage.removeItem('guestId');
-        setUser(null);
-        return;
-      }
-      
-      // Otherwise, sign out from Supabase
+
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
         throw error;
@@ -236,47 +185,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Reset password
-  const resetPassword = async (email) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
 
-      if (error) {
-        throw error;
-      }
 
-      return data;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Update password
-  const updatePassword = async (newPassword) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      return data;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const value = {
     user: userValue,
@@ -285,10 +196,7 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signInWithGoogle,
-    signInAsGuest,
     signOut,
-    resetPassword,
-    updatePassword,
   };
 
   console.log('AuthProvider rendering with value:', {

@@ -6,7 +6,7 @@ CollabCanvas is a real-time collaborative image editing platform designed for bo
 
 - global real-time chatting that all users can access for shared anything 
 - Real-time collaborative canvas editing with Fabric.js
-- User authentication with email/password, Google OAuth, and guest access
+- User authentication with email/password and Google OAuth
 - Role-based permissions (owner, editor, viewer)
 - Live chat for communication during collaboration
 - Multi-user cursor tracking

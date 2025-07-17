@@ -16,7 +16,7 @@ import {
   alpha
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import logo from '../../assets/collabcanvas-logo.svg';
+import logo from '../../assets/latest-collabcanvas-logo.png';
 
 // Styled components for modern clean form elements
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -46,7 +46,7 @@ const StyledButton = styled(Button)(({ theme }) => ({
 }));
 
 const AuthForm = () => {
-  const { signIn, signUp, signInWithGoogle, signInAsGuest, resetPassword } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
   
   const [tab, setTab] = useState(0);
   const [email, setEmail] = useState('');
@@ -77,13 +77,9 @@ const AuthForm = () => {
         if (password !== confirmPassword) {
           throw new Error('Passwords do not match');
         }
-        
+
         await signUp(email, password);
         setSuccess('Account created! Please check your email for a confirmation link.');
-      } else if (tab === 2) {
-        // Reset password
-        await resetPassword(email);
-        setSuccess('Password reset email sent. Please check your inbox.');
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -93,28 +89,7 @@ const AuthForm = () => {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    try {
-      console.log('Using demo credentials');
-      await signIn('demo@example.com', 'Password123!');
-    } catch (error) {
-      console.error('Failed to login with demo account:', error);
-      setError('Demo login failed: ' + error.message);
-      
-      // If demo login fails, try to create demo account
-      try {
-        console.log('Attempting to create demo account');
-        await signUp('demo@example.com', 'Password123!');
-        setSuccess('Demo account created! Please check the demo@example.com inbox for confirmation or try signing in again.');
-      } catch (signupError) {
-        console.error('Failed to create demo account:', signupError);
-        setError('Could not create demo account: ' + signupError.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+
   
   return (
     <Container maxWidth="sm">
@@ -143,9 +118,9 @@ const AuthForm = () => {
           </Alert>
         )}
         
-        <Tabs 
-          value={tab} 
-          onChange={handleTabChange} 
+        <Tabs
+          value={tab}
+          onChange={handleTabChange}
           indicatorColor="primary"
           textColor="primary"
           centered
@@ -153,7 +128,6 @@ const AuthForm = () => {
         >
           <Tab label="Sign In" />
           <Tab label="Sign Up" />
-          <Tab label="Reset Password" />
         </Tabs>
         
         <Box component="form" onSubmit={handleSubmit} noValidate>
@@ -208,54 +182,23 @@ const AuthForm = () => {
             sx={{ mt: 3, mb: 2 }}
             disabled={loading}
           >
-            {loading ? <CircularProgress size={24} /> : 
-              tab === 0 ? 'Sign In' : 
-              tab === 1 ? 'Sign Up' : 
-              'Send Reset Link'}
+            {loading ? <CircularProgress size={24} /> :
+              tab === 0 ? 'Sign In' : 'Sign Up'}
           </StyledButton>
         </Box>
         
         <Divider sx={{ my: 2 }}>or</Divider>
         
         <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <StyledButton 
-            variant="outlined" 
-            onClick={handleDemoLogin}
-            disabled={loading}
-            sx={{ mb: 1 }}
-          >
-            Use Demo Account
-          </StyledButton>
-
           <StyledButton
             variant="outlined"
             onClick={signInWithGoogle}
             disabled={loading}
-            sx={{ mb: 1 }}
           >
             Sign in with Google
           </StyledButton>
-          
-          <StyledButton
-            variant="outlined"
-            onClick={signInAsGuest}
-            disabled={loading}
-          >
-            Continue as Guest
-          </StyledButton>
         </Box>
-        
-        {tab === 0 && (
-          <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Link
-              component="button"
-              variant="body2"
-              onClick={() => setTab(2)}
-            >
-              Forgot password?
-            </Link>
-          </Box>
-        )}
+
       </StyledPaper>
     </Container>
   );

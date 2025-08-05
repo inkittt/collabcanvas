@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Undo/Redo Position Changes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success { background-color: #d4edda; color: #155724; }
+        .status.error { background-color: #f8d7da; color: #721c24; }
+        .status.warning { background-color: #fff3cd; color: #856404; }
+        .status.info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #28a745;
+            background-color: #f8fff9;
+        }
+        .step.critical {
+            border-left-color: #dc3545;
+            background-color: #fff5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>📍 Test Undo/Redo Position & Property Changes</h1>
+        
+        <div class="instructions">
+            <h3>🎯 What This Test Verifies:</h3>
+            <p>This test specifically checks if undo/redo operations correctly restore element positions, sizes, colors, and other properties - not just add/remove elements.</p>
+            
+            <h4>🔧 Latest Fix Applied:</h4>
+            <ul>
+                <li>✅ Added complete database sync (delete + update + add)</li>
+                <li>✅ Now updates element positions and properties in database</li>
+                <li>✅ Preserves element transformations during undo/redo</li>
+                <li>✅ Handles position, size, rotation, color changes</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Detailed Test Procedure</h3>
+            
+            <div class="step">
+                <strong>Step 1:</strong> Open your CollabCanvas app and create/open a canvas
+            </div>
+            
+            <div class="step">
+                <strong>Step 2:</strong> Add a rectangle at position (100, 100)
+            </div>
+            
+            <div class="step critical">
+                <strong>Step 3:</strong> Move the rectangle to position (300, 200) - this should save to undo stack
+            </div>
+            
+            <div class="step critical">
+                <strong>Step 4:</strong> Use undo (Ctrl+Z) - rectangle should return to (100, 100)
+            </div>
+            
+            <div class="step critical">
+                <strong>Step 5:</strong> Refresh the page (F5) - rectangle should STILL be at (100, 100)
+            </div>
+            
+            <div class="step">
+                <strong>Step 6:</strong> Use redo (Ctrl+Y) - rectangle should move back to (300, 200)
+            </div>
+            
+            <div class="step critical">
+                <strong>Step 7:</strong> Refresh again - rectangle should STILL be at (300, 200)
+            </div>
+            
+            <div class="step">
+                <strong>Step 8:</strong> Test with size changes: resize rectangle, undo, refresh
+            </div>
+            
+            <div class="step">
+                <strong>Step 9:</strong> Test with color changes: change color, undo, refresh
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>✅ Position & Property Test Results</h3>
+            <div id="test-results">
+                <label><input type="checkbox" id="result1"> Element positions change visually during undo/redo</label><br>
+                <label><input type="checkbox" id="result2"> 🔥 CRITICAL: Position changes persist after page refresh</label><br>
+                <label><input type="checkbox" id="result3"> Element sizes change during undo/redo</label><br>
+                <label><input type="checkbox" id="result4"> 🔥 CRITICAL: Size changes persist after page refresh</label><br>
+                <label><input type="checkbox" id="result5"> Element colors change during undo/redo</label><br>
+                <label><input type="checkbox" id="result6"> 🔥 CRITICAL: Color changes persist after page refresh</label><br>
+                <label><input type="checkbox" id="result7"> Element rotations change during undo/redo</label><br>
+                <label><input type="checkbox" id="result8"> 🔥 CRITICAL: Rotation changes persist after page refresh</label><br>
+                <label><input type="checkbox" id="result9"> Console shows database update messages</label><br>
+                <label><input type="checkbox" id="result10"> No duplicate elements after undo/redo</label><br>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Debug Console Commands</h3>
+            <p>Run these in browser console to debug position issues:</p>
+            
+            <button onclick="copyCommand('checkPositions')">Check Element Positions</button>
+            <button onclick="copyCommand('compareDbCanvas')">Compare DB vs Canvas</button>
+            <button onclick="copyCommand('testPositionUpdate')">Test Position Update</button>
+            
+            <div id="debug-commands" class="log" style="margin-top: 10px;">
+Click buttons above to copy debug commands to clipboard.
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🛠️ Expected Console Messages</h3>
+            <div class="status info">
+                <strong>During Undo/Redo, you should see:</strong>
+                <div class="log">
+🔄 UNDO/REDO: Starting complete database sync...
+📋 Database has X elements
+🎯 Canvas should have Y elements
+🗑️ Elements to delete: 0
+📝 Elements to update: N
+📝 Updated element: [element-id] position: 100 100
+✅ Database sync completed: {deleted: 0, updated: N, added: 0}
+🔄 Real-time updates re-enabled
+                </div>
+            </div>
+            
+            <div class="status warning">
+                <strong>If you see these, there are issues:</strong>
+                <div class="log">
+❌ Error updating element: [element-id] [error message]
+❌ Database sync failed: [error]
+⚠️ No position changes in console logs
+⚠️ Elements jumping back to old positions after refresh
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Generate Position Test Report</h3>
+            <button onclick="generatePositionReport()">Generate Position Test Report</button>
+            
+            <div id="position-report" class="log" style="margin-top: 10px; min-height: 150px;">
+Click "Generate Position Test Report" after completing all position tests.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const debugCommands = {
+            checkPositions: `
+// Check current element positions in canvas vs database
+async function checkElementPositions() {
+    const canvasId = window.location.pathname.split('/').pop();
+    
+    // Get canvas positions
+    if (window.fabricCanvasRef && window.fabricCanvasRef.current) {
+        const canvas = window.fabricCanvasRef.current;
+        const objects = canvas.getObjects();
+        console.log('🎨 Canvas Element Positions:');
+        objects.forEach(obj => {
+            console.log(\`ID: \${obj.id}, Type: \${obj.type}, Position: (\${obj.left}, \${obj.top}), Size: \${obj.width}x\${obj.height}\`);
+        });
+    }
+    
+    // Get database positions
+    if (window.ElementService) {
+        const elements = await window.ElementService.getCanvasElements(canvasId);
+        console.log('📋 Database Element Positions:');
+        elements.forEach(el => {
+            const data = el.data;
+            console.log(\`ID: \${el.id}, Type: \${el.element_type}, Position: (\${data.left}, \${data.top}), Size: \${data.width}x\${data.height}\`);
+        });
+    }
+}
+checkElementPositions();`,
+
+            compareDbCanvas: `
+// Compare database and canvas element properties
+async function compareDbCanvas() {
+    const canvasId = window.location.pathname.split('/').pop();
+    
+    if (!window.fabricCanvasRef?.current || !window.ElementService) {
+        console.log('❌ Canvas or ElementService not available');
+        return;
+    }
+    
+    const canvas = window.fabricCanvasRef.current;
+    const canvasObjects = canvas.getObjects();
+    const dbElements = await window.ElementService.getCanvasElements(canvasId);
+    
+    console.log('🔍 Comparing Canvas vs Database:');
+    
+    canvasObjects.forEach(obj => {
+        const dbElement = dbElements.find(el => el.id === obj.id);
+        if (dbElement) {
+            const dbData = dbElement.data;
+            console.log(\`Element \${obj.id}:\`);
+            console.log(\`  Canvas: (\${obj.left}, \${obj.top}) \${obj.width}x\${obj.height}\`);
+            console.log(\`  Database: (\${dbData.left}, \${dbData.top}) \${dbData.width}x\${dbData.height}\`);
+            
+            const posMatch = obj.left === dbData.left && obj.top === dbData.top;
+            const sizeMatch = obj.width === dbData.width && obj.height === dbData.height;
+            console.log(\`  Position Match: \${posMatch ? '✅' : '❌'}\`);
+            console.log(\`  Size Match: \${sizeMatch ? '✅' : '❌'}\`);
+        } else {
+            console.log(\`❌ Element \${obj.id} not found in database\`);
+        }
+    });
+}
+compareDbCanvas();`,
+
+            testPositionUpdate: `
+// Test updating an element position
+async function testPositionUpdate() {
+    if (!window.fabricCanvasRef?.current || !window.ElementService) {
+        console.log('❌ Canvas or ElementService not available');
+        return;
+    }
+    
+    const canvas = window.fabricCanvasRef.current;
+    const objects = canvas.getObjects();
+    
+    if (objects.length === 0) {
+        console.log('⚠️ No objects on canvas to test');
+        return;
+    }
+    
+    const obj = objects[0];
+    console.log(\`🧪 Testing position update for element: \${obj.id}\`);
+    console.log(\`Current position: (\${obj.left}, \${obj.top})\`);
+    
+    // Move element
+    obj.set({ left: obj.left + 50, top: obj.top + 50 });
+    canvas.renderAll();
+    
+    console.log(\`New position: (\${obj.left}, \${obj.top})\`);
+    
+    // Update in database
+    try {
+        const updateData = {
+            data: {
+                ...obj.toObject(),
+                _version: Date.now(),
+                _lastEditTime: new Date().toISOString()
+            }
+        };
+        
+        await window.ElementService.updateElement(obj.id, updateData);
+        console.log('✅ Position updated in database');
+    } catch (error) {
+        console.error('❌ Failed to update position:', error);
+    }
+}
+testPositionUpdate();`
+        };
+
+        function copyCommand(commandKey) {
+            const command = debugCommands[commandKey];
+            navigator.clipboard.writeText(command).then(() => {
+                document.getElementById('debug-commands').textContent = command;
+                console.log(`Copied ${commandKey} command to clipboard`);
+            }).catch(err => {
+                console.error('Failed to copy command:', err);
+            });
+        }
+
+        function generatePositionReport() {
+            const checkboxes = document.querySelectorAll('#test-results input[type="checkbox"]');
+            const reportDiv = document.getElementById('position-report');
+            
+            let passedTests = 0;
+            let totalTests = checkboxes.length;
+            let criticalTests = 0;
+            let criticalPassed = 0;
+            
+            let report = '📍 UNDO/REDO POSITION & PROPERTY TEST REPORT\n';
+            report += '=' .repeat(60) + '\n\n';
+            
+            checkboxes.forEach((checkbox, index) => {
+                const label = checkbox.parentElement.textContent.trim();
+                const status = checkbox.checked ? '✅ PASS' : '❌ FAIL';
+                const isCritical = label.includes('🔥 CRITICAL');
+                
+                if (isCritical) {
+                    criticalTests++;
+                    if (checkbox.checked) criticalPassed++;
+                }
+                
+                report += `${status} - ${label}\n`;
+                if (checkbox.checked) passedTests++;
+            });
+            
+            report += '\n' + '=' .repeat(60) + '\n';
+            report += `SUMMARY: ${passedTests}/${totalTests} tests passed (${Math.round(passedTests/totalTests*100)}%)\n`;
+            report += `CRITICAL: ${criticalPassed}/${criticalTests} critical tests passed\n\n`;
+            
+            if (criticalPassed === criticalTests && passedTests === totalTests) {
+                report += '🎉 ALL TESTS PASSED! Position and property changes now persist correctly!\n';
+                report += '✅ Undo/redo with database sync is working perfectly.\n';
+            } else if (criticalPassed < criticalTests) {
+                report += '🚨 CRITICAL FAILURE: Position/property changes are not persisting!\n';
+                report += '❌ Database sync is not updating element properties correctly.\n';
+                report += '💡 Check browser console for database update error messages.\n';
+            } else {
+                report += '⚠️ SOME TESTS FAILED. Basic functionality works but has issues.\n';
+            }
+            
+            report += '\nGenerated: ' + new Date().toLocaleString();
+            
+            reportDiv.textContent = report;
+        }
+    </script>
+</body>
+</html>

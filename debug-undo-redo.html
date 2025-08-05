@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Undo/Redo Database Sync</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .debug-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .debug-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success { background-color: #d4edda; color: #155724; }
+        .status.error { background-color: #f8d7da; color: #721c24; }
+        .status.warning { background-color: #fff3cd; color: #856404; }
+        .status.info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔍 Debug Undo/Redo Database Sync</h1>
+        
+        <div class="instructions">
+            <h3>🎯 Debug Instructions:</h3>
+            <ol>
+                <li>Open your CollabCanvas app in another tab</li>
+                <li>Open browser console (F12) to see detailed logs</li>
+                <li>Create/open a canvas and add some elements</li>
+                <li>Try undo/redo operations</li>
+                <li>Check the console logs for database sync messages</li>
+                <li>Use the buttons below to check what's happening</li>
+            </ol>
+        </div>
+
+        <div class="debug-section">
+            <h3>🔧 Potential Issues & Solutions</h3>
+            
+            <div class="status warning">
+                <strong>Issue 1: Canvas State Structure</strong>
+                <p>The canvas.toJSON() might not include element IDs properly.</p>
+                <div class="code-block">
+// Check if canvas objects have IDs:
+console.log('Canvas state:', canvas.toJSON(['id']));
+// Should show objects with id property
+                </div>
+            </div>
+
+            <div class="status warning">
+                <strong>Issue 2: Database Sync Function Not Called</strong>
+                <p>The syncCanvasStateWithDatabase function might not be executing.</p>
+                <div class="code-block">
+// Add this to handleUndo/handleRedo:
+console.log('🔄 Starting database sync...');
+await syncCanvasStateWithDatabase(prevState, canvasId);
+console.log('✅ Database sync completed');
+                </div>
+            </div>
+
+            <div class="status warning">
+                <strong>Issue 3: Element ID Mismatch</strong>
+                <p>Canvas objects might have different IDs than database elements.</p>
+                <div class="code-block">
+// Check element IDs:
+console.log('Canvas element IDs:', canvas.getObjects().map(obj => obj.id));
+console.log('Database element IDs:', elements.map(el => el.id));
+                </div>
+            </div>
+
+            <div class="status warning">
+                <strong>Issue 4: Real-time Interference</strong>
+                <p>Real-time updates might be interfering with undo/redo sync.</p>
+                <div class="code-block">
+// Temporarily disable real-time during undo/redo:
+setIsUserModifying(true); // Disable real-time updates
+await syncCanvasStateWithDatabase(prevState, canvasId);
+setTimeout(() => setIsUserModifying(false), 1000); // Re-enable
+                </div>
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h3>🛠️ Improved Undo/Redo Implementation</h3>
+            <p>Here's a more robust implementation that should work:</p>
+            
+            <div class="code-block">
+// Better undo function with detailed logging
+const handleUndo = useCallback(async () => {
+  if (!fabricCanvasRef.current || undoStack.length === 0) return;
+  
+  console.log('🔄 UNDO: Starting undo operation');
+  const canvas = fabricCanvasRef.current;
+  const currentState = canvas.toJSON(['id']);
+  
+  console.log('📊 Current canvas state:', currentState);
+  console.log('📚 Undo stack length:', undoStack.length);
+  
+  setRedoStack(prev => [...prev, currentState]);
+  const prevState = undoStack[undoStack.length - 1];
+  setUndoStack(prev => prev.slice(0, -1));
+  
+  console.log('⏪ Restoring to previous state:', prevState);
+  
+  // Disable real-time updates during sync
+  setIsUserModifying(true);
+  
+  canvas.loadFromJSON(prevState, async () => {
+    canvas.renderAll();
+    console.log('🎨 Canvas restored visually');
+    
+    try {
+      console.log('💾 Starting database sync...');
+      
+      // Get current database elements
+      const dbElements = await ElementService.getCanvasElements(canvasId);
+      console.log('📋 Database elements:', dbElements.map(el => el.id));
+      
+      // Get canvas elements
+      const canvasObjects = canvas.getObjects();
+      console.log('🎯 Canvas objects:', canvasObjects.map(obj => obj.id));
+      
+      // Delete elements not in canvas
+      const canvasIds = new Set(canvasObjects.map(obj => obj.id).filter(id => id));
+      const elementsToDelete = dbElements.filter(el => !canvasIds.has(el.id));
+      
+      console.log('🗑️ Elements to delete:', elementsToDelete.map(el => el.id));
+      
+      for (const element of elementsToDelete) {
+        console.log('🗑️ Deleting element:', element.id);
+        await ElementService.deleteElement(element.id);
+      }
+      
+      console.log('✅ Database sync completed');
+    } catch (error) {
+      console.error('❌ Database sync failed:', error);
+    } finally {
+      // Re-enable real-time updates
+      setTimeout(() => setIsUserModifying(false), 1000);
+    }
+  });
+}, [undoStack, canvasId]);
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h3>📊 Debug Console Commands</h3>
+            <p>Run these commands in your browser console while on the canvas page:</p>
+            
+            <button onclick="copyToClipboard('checkCanvasState')">Copy Canvas State Check</button>
+            <button onclick="copyToClipboard('checkDatabaseElements')">Copy Database Check</button>
+            <button onclick="copyToClipboard('checkUndoStack')">Copy Undo Stack Check</button>
+            <button onclick="copyToClipboard('testDatabaseSync')">Copy Database Sync Test</button>
+            
+            <div id="debug-commands" class="code-block" style="margin-top: 10px;">
+Click the buttons above to copy debug commands to your clipboard, then paste them in the browser console.
+            </div>
+        </div>
+
+        <div class="debug-section">
+            <h3>📝 Debug Log</h3>
+            <button onclick="clearLog()">Clear Log</button>
+            <button onclick="addLogEntry('Debug session started')">Start Debug Session</button>
+            
+            <div id="debug-log" class="log">
+Debug log will appear here. Use the browser console for detailed debugging.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const debugCommands = {
+            checkCanvasState: `
+// Check canvas state and objects
+if (window.fabricCanvasRef && window.fabricCanvasRef.current) {
+    const canvas = window.fabricCanvasRef.current;
+    const state = canvas.toJSON(['id']);
+    console.log('Canvas State:', state);
+    console.log('Canvas Objects:', canvas.getObjects().map(obj => ({
+        id: obj.id,
+        type: obj.type,
+        hasId: !!obj.id
+    })));
+} else {
+    console.log('Canvas not found. Make sure you are on the canvas page.');
+}`,
+            
+            checkDatabaseElements: `
+// Check database elements (requires ElementService to be available)
+if (window.ElementService) {
+    const canvasId = window.location.pathname.split('/').pop();
+    window.ElementService.getCanvasElements(canvasId).then(elements => {
+        console.log('Database Elements:', elements.map(el => ({
+            id: el.id,
+            type: el.element_type,
+            data: el.data
+        })));
+    }).catch(err => console.error('Error getting elements:', err));
+} else {
+    console.log('ElementService not available');
+}`,
+            
+            checkUndoStack: `
+// Check undo/redo stacks (if available in global scope)
+console.log('Undo Stack Length:', window.undoStack ? window.undoStack.length : 'Not available');
+console.log('Redo Stack Length:', window.redoStack ? window.redoStack.length : 'Not available');`,
+            
+            testDatabaseSync: `
+// Test database sync function
+console.log('Testing database sync...');
+// This would need to be adapted based on your actual implementation`
+        };
+
+        function copyToClipboard(commandKey) {
+            const command = debugCommands[commandKey];
+            navigator.clipboard.writeText(command).then(() => {
+                document.getElementById('debug-commands').textContent = command;
+                addLogEntry(\`Copied \${commandKey} command to clipboard\`);
+            }).catch(err => {
+                addLogEntry(\`Failed to copy command: \${err}\`);
+            });
+        }
+
+        function addLogEntry(message) {
+            const log = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            log.textContent += \`[\${timestamp}] \${message}\\n\`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('debug-log').textContent = '';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            addLogEntry('Debug page loaded. Open your canvas app and start debugging.');
+        });
+    </script>
+</body>
+</html>

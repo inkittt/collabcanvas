@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undo/Redo Persistence Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success { background-color: #d4edda; color: #155724; }
+        .status.error { background-color: #f8d7da; color: #721c24; }
+        .status.warning { background-color: #fff3cd; color: #856404; }
+        .status.info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { 
+            background-color: #6c757d; 
+            cursor: not-allowed; 
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .test-instructions {
+            background-color: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #28a745;
+            background-color: #f8fff9;
+        }
+        .step.current {
+            border-left-color: #ffc107;
+            background-color: #fffbf0;
+        }
+        .step.completed {
+            border-left-color: #28a745;
+            background-color: #f8fff9;
+        }
+        .step.failed {
+            border-left-color: #dc3545;
+            background-color: #fff5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔄 Undo/Redo Database Persistence Test</h1>
+        
+        <div class="test-instructions">
+            <h3>🎯 What This Test Verifies:</h3>
+            <p>This test checks if undo/redo operations properly sync with the database, ensuring that when you refresh the page, the undo/redo changes are preserved.</p>
+            
+            <h4>🔧 Recent Fixes Applied:</h4>
+            <ul>
+                <li>✅ Added keyboard shortcuts (Ctrl+Z, Ctrl+Y)</li>
+                <li>✅ Added stack size limits (50 operations)</li>
+                <li>✅ Added database synchronization for undo/redo</li>
+                <li>✅ Fixed persistence after page refresh</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Step-by-Step Test Procedure</h3>
+            <div id="test-steps">
+                <div class="step" id="step1">
+                    <strong>Step 1:</strong> Open your CollabCanvas app in another tab and create/open a canvas
+                </div>
+                <div class="step" id="step2">
+                    <strong>Step 2:</strong> Add 3-4 elements (rectangles, circles, text) to the canvas
+                </div>
+                <div class="step" id="step3">
+                    <strong>Step 3:</strong> Use undo (Ctrl+Z or button) to remove the last 2 elements
+                </div>
+                <div class="step" id="step4">
+                    <strong>Step 4:</strong> Refresh the page (F5 or Ctrl+R)
+                </div>
+                <div class="step" id="step5">
+                    <strong>Step 5:</strong> Check if only the first 2 elements remain (not all 4)
+                </div>
+                <div class="step" id="step6">
+                    <strong>Step 6:</strong> Use redo (Ctrl+Y or button) to bring back 1 element
+                </div>
+                <div class="step" id="step7">
+                    <strong>Step 7:</strong> Refresh the page again
+                </div>
+                <div class="step" id="step8">
+                    <strong>Step 8:</strong> Verify that 3 elements are now visible (persistence works)
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>✅ Test Results Checklist</h3>
+            <div id="test-results">
+                <label><input type="checkbox" id="result1"> Undo button works and removes elements</label><br>
+                <label><input type="checkbox" id="result2"> Redo button works and restores elements</label><br>
+                <label><input type="checkbox" id="result3"> Ctrl+Z keyboard shortcut works</label><br>
+                <label><input type="checkbox" id="result4"> Ctrl+Y keyboard shortcut works</label><br>
+                <label><input type="checkbox" id="result5"> 🔥 CRITICAL: Undo changes persist after page refresh</label><br>
+                <label><input type="checkbox" id="result6"> 🔥 CRITICAL: Redo changes persist after page refresh</label><br>
+                <label><input type="checkbox" id="result7"> Elements are properly synced with database</label><br>
+                <label><input type="checkbox" id="result8"> No duplicate elements appear after undo/redo</label><br>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔍 Technical Implementation Details</h3>
+            <div class="status info">
+                <strong>How the Fix Works:</strong>
+                <ul>
+                    <li><strong>Database Sync:</strong> Undo/redo now calls <code>syncCanvasStateWithDatabase()</code></li>
+                    <li><strong>Element Management:</strong> Compares canvas state with database and syncs differences</li>
+                    <li><strong>Persistence:</strong> Changes are saved to database, so they survive page refresh</li>
+                    <li><strong>Real-time Updates:</strong> Other users see undo/redo changes in real-time</li>
+                </ul>
+            </div>
+            
+            <div class="status warning">
+                <strong>Previous Issue:</strong>
+                <ul>
+                    <li>Undo/redo only affected visual canvas (Fabric.js)</li>
+                    <li>Database was not updated during undo/redo operations</li>
+                    <li>Page refresh loaded elements from database (ignoring undo/redo)</li>
+                    <li>Undo/redo stacks were lost on refresh</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Generate Test Report</h3>
+            <button onclick="generateDetailedReport()">Generate Detailed Report</button>
+            <button onclick="markCurrentStep(1)">Mark Step 1 Complete</button>
+            <button onclick="markCurrentStep(2)">Mark Step 2 Complete</button>
+            <button onclick="markCurrentStep(3)">Mark Step 3 Complete</button>
+            <button onclick="markCurrentStep(4)">Mark Step 4 Complete</button>
+            <button onclick="markCurrentStep(5)">Mark Step 5 Complete</button>
+            <button onclick="markCurrentStep(6)">Mark Step 6 Complete</button>
+            <button onclick="markCurrentStep(7)">Mark Step 7 Complete</button>
+            <button onclick="markCurrentStep(8)">Mark Step 8 Complete</button>
+            
+            <div id="detailed-report" class="log" style="margin-top: 10px; min-height: 150px;">
+                Click "Generate Detailed Report" after completing all tests.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        let completedSteps = new Set();
+
+        function markCurrentStep(stepNumber) {
+            completedSteps.add(stepNumber);
+            
+            // Update visual indicators
+            for (let i = 1; i <= 8; i++) {
+                const stepElement = document.getElementById(`step${i}`);
+                if (completedSteps.has(i)) {
+                    stepElement.className = 'step completed';
+                } else if (i === Math.min(...Array.from({length: 8}, (_, i) => i + 1).filter(n => !completedSteps.has(n)))) {
+                    stepElement.className = 'step current';
+                } else {
+                    stepElement.className = 'step';
+                }
+            }
+            
+            // Auto-advance current step
+            if (stepNumber === currentStep) {
+                currentStep = Math.min(8, currentStep + 1);
+            }
+        }
+
+        function generateDetailedReport() {
+            const checkboxes = document.querySelectorAll('#test-results input[type="checkbox"]');
+            const reportDiv = document.getElementById('detailed-report');
+            
+            let passedTests = 0;
+            let totalTests = checkboxes.length;
+            let criticalTests = 0;
+            let criticalPassed = 0;
+            
+            let report = '🔄 UNDO/REDO PERSISTENCE TEST REPORT\n';
+            report += '=' .repeat(60) + '\n\n';
+            
+            report += 'TEST EXECUTION STEPS:\n';
+            report += '-' .repeat(30) + '\n';
+            for (let i = 1; i <= 8; i++) {
+                const status = completedSteps.has(i) ? '✅ COMPLETED' : '⏸️ PENDING';
+                report += `Step ${i}: ${status}\n`;
+            }
+            
+            report += '\nFUNCTIONAL TEST RESULTS:\n';
+            report += '-' .repeat(30) + '\n';
+            
+            checkboxes.forEach((checkbox, index) => {
+                const label = checkbox.parentElement.textContent.trim();
+                const status = checkbox.checked ? '✅ PASS' : '❌ FAIL';
+                const isCritical = label.includes('🔥 CRITICAL');
+                
+                if (isCritical) {
+                    criticalTests++;
+                    if (checkbox.checked) criticalPassed++;
+                }
+                
+                report += `${status} - ${label}\n`;
+                if (checkbox.checked) passedTests++;
+            });
+            
+            report += '\n' + '=' .repeat(60) + '\n';
+            report += `SUMMARY: ${passedTests}/${totalTests} tests passed (${Math.round(passedTests/totalTests*100)}%)\n`;
+            report += `CRITICAL: ${criticalPassed}/${criticalTests} critical tests passed\n\n`;
+            
+            if (criticalPassed === criticalTests && passedTests === totalTests) {
+                report += '🎉 ALL TESTS PASSED! Undo/Redo with database persistence is working perfectly!\n';
+                report += '✅ Elements now persist correctly after page refresh.\n';
+                report += '✅ Database synchronization is working properly.\n';
+            } else if (criticalPassed < criticalTests) {
+                report += '🚨 CRITICAL FAILURE: Database persistence is not working!\n';
+                report += '❌ Undo/redo changes are not being saved to the database.\n';
+                report += '💡 Check browser console for database sync errors.\n';
+            } else {
+                report += '⚠️ SOME TESTS FAILED. Basic functionality may work but has issues.\n';
+            }
+            
+            report += '\nSTEPS COMPLETION: ' + completedSteps.size + '/8 steps completed\n';
+            report += '\nGenerated: ' + new Date().toLocaleString();
+            
+            reportDiv.textContent = report;
+        }
+        
+        // Initialize first step as current
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('step1').className = 'step current';
+        });
+    </script>
+</body>
+</html>

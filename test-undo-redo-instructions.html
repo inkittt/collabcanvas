@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undo/Redo Database Persistence Test Instructions</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .step.critical {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .step.success {
+            border-left-color: #28a745;
+            background: #f8fff8;
+        }
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button.danger {
+            background: #dc3545;
+        }
+        .button.danger:hover {
+            background: #c82333;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .status.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .status.warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔧 Undo/Redo Database Persistence Fix</h1>
+        <p>Test instructions for verifying that undo/redo operations properly persist to the database</p>
+    </div>
+
+    <div class="status info">
+        <strong>📋 What was fixed:</strong>
+        <ul>
+            <li>Added missing dependencies to useCallback hooks</li>
+            <li>Fixed async callback handling in canvas.loadFromJSON</li>
+            <li>Added comprehensive debugging logs</li>
+            <li>Exposed functions globally for testing</li>
+            <li>Improved error handling in database sync</li>
+        </ul>
+    </div>
+
+    <div class="step critical">
+        <h3>🚨 Step 1: Navigate to Your Canvas</h3>
+        <p>Go to your canvas page in the browser. Make sure you have at least one element (circle, rectangle, text, etc.) on the canvas.</p>
+        <p><strong>URL should look like:</strong> <code>http://localhost:3000/canvas/[canvas-id]</code></p>
+    </div>
+
+    <div class="step">
+        <h3>📝 Step 2: Open Browser Console</h3>
+        <p>Press <kbd>F12</kbd> or right-click and select "Inspect" → "Console" tab</p>
+        <p>You should see debug messages from the canvas loading.</p>
+    </div>
+
+    <div class="step">
+        <h3>🧪 Step 3: Load Test Script</h3>
+        <p>Copy and paste this script into the console:</p>
+        <div class="code-block">
+// Load the comprehensive test script
+fetch('/test-undo-redo-fix.js')
+  .then(response => response.text())
+  .then(script => {
+    eval(script);
+    console.log('✅ Test script loaded successfully');
+  })
+  .catch(error => {
+    console.error('❌ Failed to load test script:', error);
+    console.log('💡 Make sure test-undo-redo-fix.js is in your public folder');
+  });
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>🏃 Step 4: Run Automatic Test</h3>
+        <p>The test should start automatically after loading. If not, run:</p>
+        <div class="code-block">
+window.debugUndoRedo.runUndoRedoTest();
+        </div>
+        <p>Watch the console output carefully. The test will:</p>
+        <ul>
+            <li>Move an element</li>
+            <li>Perform undo operation</li>
+            <li>Check if database was updated</li>
+            <li>Perform redo operation</li>
+            <li>Verify all states match</li>
+        </ul>
+    </div>
+
+    <div class="step success">
+        <h3>✅ Step 5: Manual Verification</h3>
+        <p>After the automatic test, perform these manual checks:</p>
+        
+        <h4>5a. Test Keyboard Shortcuts:</h4>
+        <ul>
+            <li>Move an element manually</li>
+            <li>Press <kbd>Ctrl+Z</kbd> (or <kbd>Cmd+Z</kbd> on Mac) to undo</li>
+            <li>Press <kbd>Ctrl+Y</kbd> (or <kbd>Cmd+Shift+Z</kbd> on Mac) to redo</li>
+        </ul>
+        
+        <h4>5b. Test Page Refresh Persistence:</h4>
+        <ul>
+            <li>Move an element</li>
+            <li>Press <kbd>Ctrl+Z</kbd> to undo</li>
+            <li>Refresh the page (<kbd>F5</kbd>)</li>
+            <li>Check if the element is in the undone position</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>🔍 Step 6: Check Database Directly</h3>
+        <p>You can also verify the database state directly:</p>
+        <div class="code-block">
+// Check current database state
+window.debugUndoRedo.getDatabaseElementPositions().then(positions => {
+  console.log('📋 Current database positions:', positions);
+});
+
+// Compare canvas vs database
+async function quickCheck() {
+  const canvas = window.debugUndoRedo.getCanvasElementPositions();
+  const db = await window.debugUndoRedo.getDatabaseElementPositions();
+  window.debugUndoRedo.comparePositions(canvas, db, 'Quick Check');
+}
+quickCheck();
+        </div>
+    </div>
+
+    <div class="step critical">
+        <h3>🚨 Troubleshooting</h3>
+        
+        <h4>If undo/redo still doesn't persist:</h4>
+        <div class="status error">
+            <strong>Check these common issues:</strong>
+            <ul>
+                <li><strong>Real-time conflicts:</strong> Multiple users editing simultaneously</li>
+                <li><strong>Network issues:</strong> Database updates failing silently</li>
+                <li><strong>Element ID mismatches:</strong> Canvas and database elements have different IDs</li>
+                <li><strong>Timing issues:</strong> Database sync happening too slowly</li>
+            </ul>
+        </div>
+        
+        <h4>Debug commands:</h4>
+        <div class="code-block">
+// Check if functions are available
+console.log('handleUndo available:', typeof window.handleUndo === 'function');
+console.log('handleRedo available:', typeof window.handleRedo === 'function');
+console.log('ElementService available:', typeof window.ElementService === 'object');
+
+// Check undo/redo stacks
+console.log('Undo stack length:', window.fabricCanvasRef?.current ? 'Available' : 'Not available');
+
+// Force a database sync test
+if (window.fabricCanvasRef?.current) {
+  const canvas = window.fabricCanvasRef.current;
+  const state = canvas.toJSON(['id']);
+  console.log('Current canvas state:', state);
+}
+        </div>
+    </div>
+
+    <div class="step success">
+        <h3>🎉 Expected Results</h3>
+        <p>If everything is working correctly, you should see:</p>
+        <ul>
+            <li>✅ Console logs showing "Database sync completed"</li>
+            <li>✅ Element positions match between canvas and database</li>
+            <li>✅ Undo/redo operations update database with "_updatedBy: 'undo_redo_operation'"</li>
+            <li>✅ Page refresh shows elements in their undone/redone positions</li>
+            <li>✅ All test assertions pass</li>
+        </ul>
+    </div>
+
+    <div class="status warning">
+        <strong>📝 Note:</strong> Make sure your test files are accessible:
+        <ul>
+            <li><code>test-undo-redo-fix.js</code> should be in your public folder</li>
+            <li>Your development server should be running</li>
+            <li>You should be logged in and have edit permissions on the canvas</li>
+        </ul>
+    </div>
+
+    <script>
+        // Helper function to copy code to clipboard
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('Copied to clipboard:', text);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+        
+        // Add copy buttons to code blocks
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeBlocks = document.querySelectorAll('.code-block');
+            codeBlocks.forEach((block, index) => {
+                const button = document.createElement('button');
+                button.className = 'button';
+                button.textContent = 'Copy';
+                button.style.float = 'right';
+                button.style.marginTop = '-5px';
+                button.onclick = () => copyToClipboard(block.textContent);
+                block.appendChild(button);
+            });
+        });
+    </script>
+</body>
+</html>

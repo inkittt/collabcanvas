@@ -132,7 +132,16 @@ const CanvasEditor = ({
     const canvas = fabricCanvasRef.current;
     const json = canvas.toJSON(['id']);
 
-    setUndoStack(prev => [...prev, json]);
+    console.log('💾 SAVE STATE: Saving canvas state with', json.objects?.length || 0, 'objects');
+
+    // Limit undo stack size to prevent memory issues
+    const MAX_UNDO_STACK_SIZE = 50;
+    setUndoStack(prev => {
+      const newStack = [...prev, json];
+      const finalStack = newStack.slice(-MAX_UNDO_STACK_SIZE);
+      console.log('💾 SAVE STATE: Undo stack now has', finalStack.length, 'states');
+      return finalStack;
+    });
     setRedoStack([]);
   }, []);
 
@@ -1110,41 +1119,182 @@ const CanvasEditor = ({
     };
   }, [canvasId, userId]); // Removed problematic dependencies that cause re-initialization
 
+  // Complete database sync: delete, add, and update elements to match canvas state
+  const syncCanvasStateWithDatabase = useCallback(async (canvasState, canvasId) => {
+    if (!canvasState || !canvasId) return;
 
+    console.log('🔄 UNDO/REDO: Starting complete database sync...');
+
+    try {
+      // Disable real-time updates during sync to prevent conflicts
+      setIsUserModifying(true);
+
+      // Get current elements from database
+      const currentElements = await ElementService.getCanvasElements(canvasId);
+      const currentElementsMap = new Map(currentElements.map(el => [el.id, el]));
+      console.log('📋 Database has', currentElements.length, 'elements');
+
+      // Get elements from canvas state
+      const canvasObjects = canvasState.objects || [];
+      const canvasObjectsMap = new Map(canvasObjects.filter(obj => obj.id).map(obj => [obj.id, obj]));
+      console.log('🎯 Canvas should have', canvasObjects.length, 'elements');
+
+      // 1. Delete elements that are in database but not in canvas state
+      const elementsToDelete = currentElements.filter(el => !canvasObjectsMap.has(el.id));
+      console.log('🗑️ Elements to delete:', elementsToDelete.length);
+
+      for (const element of elementsToDelete) {
+        try {
+          await ElementService.deleteElement(element.id);
+          console.log('🗑️ Deleted:', element.id);
+        } catch (error) {
+          console.error('❌ Error deleting element:', element.id, error);
+        }
+      }
+
+      // 2. Update existing elements with new properties (positions, sizes, etc.)
+      const elementsToUpdate = canvasObjects.filter(obj => obj.id && currentElementsMap.has(obj.id));
+      console.log('📝 Elements to update:', elementsToUpdate.length);
+
+      for (const obj of elementsToUpdate) {
+        try {
+          const currentElement = currentElementsMap.get(obj.id);
+
+          // Create proper update data structure that ElementService expects
+          const updateData = {
+            data: {
+              ...obj, // This includes left, top, width, height, etc.
+              _version: (currentElement.data._version || 0) + 1,
+              _lastEditTime: new Date().toISOString(),
+              _updatedBy: 'undo_redo_operation'
+            }
+          };
+
+          console.log('📝 Updating element:', obj.id, 'from position:', currentElement.data.left, currentElement.data.top, 'to:', obj.left, obj.top);
+
+          const result = await ElementService.updateElement(obj.id, updateData);
+
+          // Check if update was successful
+          if (result && result.element) {
+            console.log('✅ Updated element:', obj.id, 'new position:', result.element.data.left, result.element.data.top);
+          } else if (result && result.conflict) {
+            console.warn('⚠️ Conflict detected during update:', obj.id);
+          } else {
+            console.log('📝 Updated element:', obj.id, 'position:', obj.left, obj.top);
+          }
+        } catch (error) {
+          console.error('❌ Error updating element:', obj.id, error);
+        }
+      }
+
+      // 3. Add new elements (shouldn't happen often in undo/redo, but handle it)
+      const elementsToAdd = canvasObjects.filter(obj => obj.id && !currentElementsMap.has(obj.id));
+      console.log('➕ Elements to add:', elementsToAdd.length);
+
+      for (const obj of elementsToAdd) {
+        try {
+          const elementData = {
+            element_type: obj.type === 'rect' ? 'rectangle' :
+                         obj.type === 'circle' ? 'circle' :
+                         obj.type === 'i-text' ? 'text' :
+                         obj.type === 'image' ? 'image' : obj.type,
+            data: {
+              ...obj,
+              _version: 1,
+              _lastEditTime: new Date().toISOString(),
+              _createdBy: 'undo_redo_operation'
+            }
+          };
+
+          await ElementService.addCanvasElement(canvasId, elementData);
+          console.log('➕ Added element:', obj.id);
+        } catch (error) {
+          console.error('❌ Error adding element:', obj.id, error);
+        }
+      }
+
+      console.log('✅ Database sync completed:', {
+        deleted: elementsToDelete.length,
+        updated: elementsToUpdate.length,
+        added: elementsToAdd.length
+      });
+    } catch (error) {
+      console.error('❌ Database sync failed:', error);
+      throw error;
+    } finally {
+      // Re-enable real-time updates after a delay
+      setTimeout(() => {
+        setIsUserModifying(false);
+        console.log('🔄 Real-time updates re-enabled');
+      }, 1000);
+    }
+  }, [setIsUserModifying]);
 
   // Handle undo
-  const handleUndo = useCallback(() => {
-    if (!fabricCanvasRef.current || undoStack.length === 0) return;
-    
+  const handleUndo = useCallback(async () => {
+    console.log('🔄 UNDO: Starting undo operation...');
+    console.log('🔄 UNDO: Undo stack length:', undoStack.length);
+
+    if (!fabricCanvasRef.current || undoStack.length === 0) {
+      console.log('❌ UNDO: Cannot undo - no canvas or empty undo stack');
+      return;
+    }
+
     const canvas = fabricCanvasRef.current;
     const currentState = canvas.toJSON(['id']);
-    
+    console.log('🔄 UNDO: Current canvas state captured');
+
     setRedoStack(prev => [...prev, currentState]);
-    
+
     const prevState = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
-    
+
+    console.log('🔄 UNDO: Restoring to previous state with', prevState.objects?.length || 0, 'objects');
+
+    // Restore canvas visually and sync with database
     canvas.loadFromJSON(prevState, () => {
       canvas.renderAll();
+      console.log('🔄 UNDO: Canvas restored, starting database sync...');
+
+      // Sync with database after canvas is restored
+      syncCanvasStateWithDatabase(prevState, canvasId).catch(error => {
+        console.error('❌ UNDO: Error syncing with database:', error);
+      });
     });
-  }, [undoStack]);
+  }, [undoStack, canvasId, syncCanvasStateWithDatabase]);
 
   // Handle redo
-  const handleRedo = useCallback(() => {
-    if (!fabricCanvasRef.current || redoStack.length === 0) return;
-    
+  const handleRedo = useCallback(async () => {
+    console.log('🔄 REDO: Starting redo operation...');
+    console.log('🔄 REDO: Redo stack length:', redoStack.length);
+
+    if (!fabricCanvasRef.current || redoStack.length === 0) {
+      console.log('❌ REDO: Cannot redo - no canvas or empty redo stack');
+      return;
+    }
+
     const canvas = fabricCanvasRef.current;
     const currentState = canvas.toJSON(['id']);
-    
+    console.log('🔄 REDO: Current canvas state captured');
+
     setUndoStack(prev => [...prev, currentState]);
-    
+
     const nextState = redoStack[redoStack.length - 1];
     setRedoStack(prev => prev.slice(0, -1));
-    
+
+    console.log('🔄 REDO: Restoring to next state with', nextState.objects?.length || 0, 'objects');
+
+    // Restore canvas visually and sync with database
     canvas.loadFromJSON(nextState, () => {
       canvas.renderAll();
+      console.log('🔄 REDO: Canvas restored, starting database sync...');
+
+      // Sync with database after canvas is restored
+      syncCanvasStateWithDatabase(nextState, canvasId).catch(error => {
+        console.error('❌ REDO: Error syncing with database:', error);
+      });
     });
-  }, [redoStack]);
+  }, [redoStack, canvasId, syncCanvasStateWithDatabase]);
 
   // Handle delete
   const handleDelete = useCallback(async () => {
@@ -1192,7 +1342,7 @@ const CanvasEditor = ({
     }
   }, [saveCanvasState]);
 
-  // Keyboard event handling for delete key
+  // Keyboard event handling for delete key and undo/redo shortcuts
   useEffect(() => {
     if (readOnly) return; // Don't add keyboard listeners in read-only mode
 
@@ -1205,8 +1355,22 @@ const CanvasEditor = ({
         activeElement.contentEditable === 'true'
       );
 
-      // Don't handle delete key if user is typing in an input
+      // Don't handle shortcuts if user is typing in an input
       if (isInputFocused) return;
+
+      // Handle Undo: Ctrl+Z (Windows/Linux) or Cmd+Z (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Handle Redo: Ctrl+Y (Windows/Linux) or Cmd+Shift+Z (Mac) or Ctrl+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
 
       // Handle Delete or Backspace key
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -1222,7 +1386,24 @@ const CanvasEditor = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [readOnly, handleDelete]);
+  }, [readOnly, handleDelete, handleUndo, handleRedo]);
+
+  // Expose functions globally for debugging
+  useEffect(() => {
+    window.handleUndo = handleUndo;
+    window.handleRedo = handleRedo;
+    window.saveCanvasState = saveCanvasState;
+    window.fabricCanvasRef = fabricCanvasRef;
+    window.ElementService = ElementService;
+
+    return () => {
+      delete window.handleUndo;
+      delete window.handleRedo;
+      delete window.saveCanvasState;
+      delete window.fabricCanvasRef;
+      delete window.ElementService;
+    };
+  }, [handleUndo, handleRedo, saveCanvasState]);
 
   return (
     <Box sx={{ position: 'relative', height: '100%' }}>
